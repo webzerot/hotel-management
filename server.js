@@ -10,7 +10,7 @@ app.use(express.json());
 // Σερβίρισμα των στατικών αρχείων από τον φάκελο public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Χειροκίνητη σύνδεση IPv4 με Supabase
+// Απευθείας σύνδεση με τα στοιχεία της βάσης σου (Hardcoded)
 const pool = new Pool({
   host: 'db.mzdecptbtpgkzpbplwjp.supabase.co',
   port: 5432,
