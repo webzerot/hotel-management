@@ -61,6 +61,28 @@ app.put('/api/products/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Database error' }); }
 });
 
+// ΝΕΟ ROUTE: ΓΡΗΓΟΡΗ ΑΥΞΟΜΕΙΩΣΗ ΑΠΟΘΕΜΑΤΟΣ (+ / -) ΜΕ ΕΝΑ ΚΛΙΚ
+app.post('/api/products/:id/quick-stock', async (req, res) => {
+  const { id } = req.params;
+  const { change, reason } = req.body; // change: 1 ή -1
+  try {
+    // Ενημέρωση αποθέματος (με έλεγχο να μην πέσει κάτω από το 0)
+    const result = await pool.query(
+      'UPDATE products SET stock = GREATEST(0, stock + $1) WHERE id = $2 RETURNING *',
+      [change, id]
+    );
+    // Καταγραφή στα logs
+    await pool.query(
+      'INSERT INTO stock_log (product_id, change_amount, reason) VALUES ($1, $2, $3)',
+      [id, Math.abs(change), reason]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 app.delete('/api/products/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -99,7 +121,6 @@ app.get('/api/orders/pending', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Database error' }); }
 });
 
-// ΑΝΑΒΑΘΜΙΣΗ: ΕΠΙΣΤΡΕΦΕΙ ΚΑΙ ΤΟ TOTAL_COST ΣΤΟ ΙΣΤΟΡΙΚΟ
 app.get('/api/orders/all', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -110,7 +131,6 @@ app.get('/api/orders/all', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Database error' }); }
 });
 
-// ΑΝΑΒΑΘΜΙΣΗ: ΑΠΟΘΗΚΕΥΕΙ ΤΟ ΚΟΣΤΟΣ ΚΑΤΑ ΤΗΝ ΠΑΡΑΛΑΒΗ
 app.post('/api/orders/receive', async (req, res) => {
   const { order_id, items, total_cost } = req.body; 
   const cost = total_cost && total_cost.trim() !== '' ? total_cost.trim() : 'Άγνωστο κόστος';
@@ -125,7 +145,6 @@ app.post('/api/orders/receive', async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Database error' }); }
 });
 
-// ΝΕΟ ROUTE: ΑΛΛΑΓΗ / ΠΡΟΣΘΗΚΗ ΚΟΣΤΟΥΣ ΜΕΤΑΓΕΝΕΣΤΕΡΑ ΑΠΟ ΤΟ ΙΣΤΟΡΙΚΟ
 app.put('/api/orders/:id/cost', async (req, res) => {
   const { id } = req.params;
   const { total_cost } = req.body;
