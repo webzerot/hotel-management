@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Οι ρυθμίσεις σύνδεσης που ξέρουμε ότι λειτουργούν 100% για το δικό σου region
+// Σύνδεση με Supabase (Region: Ireland)
 const pool = new Pool({
   host: 'aws-0-eu-west-1.pooler.supabase.com',  
   port: 5432,                                     
@@ -140,6 +140,19 @@ app.post('/api/orders/receive', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Receiving error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
+  }
+});
+
+// 7. DELETE: Διαγραφή Κατά Λάθος Παραγγελίας (ΝΕΟ FEATURE)
+app.delete('/api/orders/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    // Λόγω του ON DELETE CASCADE στην SQL δομή μας, σβήνοντας την παραγγελία σβήνονται αυτόματα και τα order_items της!
+    await pool.query('DELETE FROM orders WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete order error:', err.message);
     res.status(500).json({ error: 'Database error', details: err.message });
   }
 });
