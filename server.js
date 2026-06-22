@@ -8,7 +8,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Σύνδεση με Supabase (Region: Ireland)
 const pool = new Pool({
   host: 'aws-0-eu-west-1.pooler.supabase.com',  
   port: 5432,                                     
@@ -23,26 +22,19 @@ const pool = new Pool({
 });
 
 pool.connect((err, client, release) => {
-  if (err) {
-    console.error('❌ Αποτυχία σύνδεσης με Supabase:', err.message);
-  } else {
-    console.log('✅ Σύνδεση με Supabase επιτυχής!');
-    release();
-  }
+  if (err) console.error('❌ Αποτυχία σύνδεσης με Supabase:', err.message);
+  else { console.log('✅ Σύνδεση με Supabase επιτυχής!'); release(); }
 });
 
-// 1. GET: Όλα τα προϊόντα
 app.get('/api/products', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM products ORDER BY id ASC');
     res.json(result.rows);
   } catch (err) {
-    console.error('Query error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 2. POST: Προσθήκη προϊόντος
 app.post('/api/products', async (req, res) => {
   let { name, stock, min_required, supplier, suggested_qty } = req.body;
   if (!supplier || supplier.trim() === '') supplier = 'Άγνωστος';
@@ -52,18 +44,13 @@ app.post('/api/products', async (req, res) => {
       'INSERT INTO products (name, stock, min_required, supplier, suggested_qty) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [name, stock, min_required, supplier, sugQty]
     );
-    await pool.query(
-      'INSERT INTO stock_log (product_id, change_amount, reason) VALUES ($1, $2, $3)',
-      [result.rows[0].id, stock, 'Αρχική Εισαγωγή']
-    );
+    await pool.query('INSERT INTO stock_log (product_id, change_amount, reason) VALUES ($1, $2, $3)', [result.rows[0].id, stock, 'Αρχική Εισαγωγή']);
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('Insert error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 3. PUT: Quick Edit Προϊόντος (Inline)
 app.put('/api/products/:id', async (req, res) => {
   const { id } = req.params;
   let { name, min_required, supplier, suggested_qty } = req.body;
@@ -76,191 +63,142 @@ app.put('/api/products/:id', async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    console.error('Update error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 4. DELETE: Οριστική Διαγραφή Προϊόντος
 app.delete('/api/products/:id', async (req, res) => {
   const { id } = req.params;
   try {
     await pool.query('DELETE FROM products WHERE id = $1', [id]);
     res.json({ success: true });
   } catch (err) {
-    console.error('Delete product error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 5. POST: Δημιουργία Νέας Παραγγελίας
+// ΝΕΟ ROUTE: ΜΑΖΙΚΗ ΔΙΑΓΡΑΦΗ ΠΡΟΪΟΝΤΩΝ ΕΝΟΣ ΠΡΟΜΗΘΕΥΤΗ
+app.delete('/api/suppliers/:name', async (req, res) => {
+  const { name } = req.params;
+  try {
+    await pool.query('DELETE FROM products WHERE supplier = $1', [name]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 app.post('/api/orders', async (req, res) => {
   const { ordered_by, items } = req.body; 
   try {
-    const orderRes = await pool.query(
-      'INSERT INTO orders (ordered_by) VALUES ($1) RETURNING *',
-      [ordered_by]
-    );
+    const orderRes = await pool.query('INSERT INTO orders (ordered_by) VALUES ($1) RETURNING *', [ordered_by]);
     const orderId = orderRes.rows[0].id;
-
     for (let item of items) {
-      await pool.query(
-        'INSERT INTO order_items (order_id, product_id, requested_qty) VALUES ($1, $2, $3)',
-        [orderId, item.product_id, item.requested_qty]
-      );
+      await pool.query('INSERT INTO order_items (order_id, product_id, requested_qty) VALUES ($1, $2, $3)', [orderId, item.product_id, item.requested_qty]);
     }
     res.json({ success: true, orderId });
   } catch (err) {
-    console.error('Order creation error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 6. GET: Λίστα Εκκρεμών Παραγγελιών
 app.get('/api/orders/pending', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT o.id as order_id, o.ordered_by, o.created_at, 
-             oi.id as item_id, oi.product_id, oi.requested_qty, p.name as product_name, p.supplier
-      FROM orders o
-      JOIN order_items oi ON o.id = oi.order_id
-      JOIN products p ON oi.product_id = p.id
-      WHERE o.status = 'Εκκρεμεί'
-      ORDER BY o.id DESC
+      SELECT o.id as order_id, o.ordered_by, o.created_at, oi.id as item_id, oi.product_id, oi.requested_qty, p.name as product_name, p.supplier
+      FROM orders o JOIN order_items oi ON o.id = oi.order_id JOIN products p ON oi.product_id = p.id WHERE o.status = 'Εκκρεμεί' ORDER BY o.id DESC
     `);
     res.json(result.rows);
   } catch (err) {
-    console.error('Pending orders error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 7. GET: ΟΛΟ το Γενικό Ιστορικό Παραγγελιών
 app.get('/api/orders/all', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT o.id as order_id, o.ordered_by, o.status, o.created_at, 
-             oi.requested_qty, oi.received_qty, p.name as product_name, p.supplier
-      FROM orders o
-      JOIN order_items oi ON o.id = oi.order_id
-      JOIN products p ON oi.product_id = p.id
-      ORDER BY o.id DESC
+      SELECT o.id as order_id, o.ordered_by, o.status, o.created_at, oi.requested_qty, oi.received_qty, p.name as product_name, p.supplier
+      FROM orders o JOIN order_items oi ON o.id = oi.order_id JOIN products p ON oi.product_id = p.id ORDER BY o.id DESC
     `);
     res.json(result.rows);
   } catch (err) {
-    console.error('All orders history error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 8. POST: Επιβεβαίωση Παραλαβής
 app.post('/api/orders/receive', async (req, res) => {
   const { order_id, items } = req.body; 
   try {
     await pool.query("UPDATE orders SET status = 'Παραλήφθηκε' WHERE id = $1", [order_id]);
-
     for (let item of items) {
-      await pool.query(
-        'UPDATE order_items SET received_qty = $1 WHERE order_id = $2 AND product_id = $3',
-        [item.received_qty, order_id, item.product_id]
-      );
-      await pool.query(
-        'UPDATE products SET stock = stock + $1 WHERE id = $2',
-        [item.received_qty, item.product_id]
-      );
-      await pool.query(
-        'INSERT INTO stock_log (product_id, change_amount, reason) VALUES ($1, $2, $3)',
-        [item.product_id, item.received_qty, 'Παραλαβή Παραγγελίας']
-      );
+      await pool.query('UPDATE order_items SET received_qty = $1 WHERE order_id = $2 AND product_id = $3', [item.received_qty, order_id, item.product_id]);
+      await pool.query('UPDATE products SET stock = stock + $1 WHERE id = $2', [item.received_qty, item.product_id]);
+      await pool.query('INSERT INTO stock_log (product_id, change_amount, reason) VALUES ($1, $2, $3)', [item.product_id, item.received_qty, 'Παραλαβή Παραγγελίας']);
     }
     res.json({ success: true });
   } catch (err) {
-    console.error('Receiving error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 9. DELETE: Διαγραφή μίας μεμονωμένης παραγγελίας
 app.delete('/api/orders/:id', async (req, res) => {
   const { id } = req.params;
   try {
     await pool.query('DELETE FROM orders WHERE id = $1', [id]);
     res.json({ success: true });
   } catch (err) {
-    console.error('Delete order error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 10. DELETE: Μαζική διαγραφή ΟΛΩΝ των παραγγελιών
 app.delete('/api/orders/all/clear', async (req, res) => {
   try {
     await pool.query('TRUNCATE TABLE orders CASCADE');
     res.json({ success: true });
   } catch (err) {
-    console.error('Clear all orders error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 11. GET: Ιστορικό Κινήσεων για τα Analytics με ΦΙΛΤΡΟ ΧΡΟΝΟΥ (ΑΝΑΒΑΘΜΙΣΗ)
 app.get('/api/analytics/logs', async (req, res) => {
-  const { range } = req.query; // week, month, year, all
+  const { range } = req.query;
   let timeCondition = "";
-
   if (range === 'week') timeCondition = "WHERE sl.changed_at >= NOW() - INTERVAL '7 days'";
   else if (range === 'month') timeCondition = "WHERE sl.changed_at >= NOW() - INTERVAL '30 days'";
   else if (range === 'year') timeCondition = "WHERE sl.changed_at >= NOW() - INTERVAL '365 days'";
-
   try {
-    const result = await pool.query(`
-      SELECT sl.id, p.name as product_name, sl.change_amount, sl.reason, sl.changed_at 
-      FROM stock_log sl
-      JOIN products p ON sl.product_id = p.id
-      ${timeCondition}
-      ORDER BY sl.changed_at DESC 
-      LIMIT 200
-    `);
+    const result = await pool.query(`SELECT sl.id, p.name as product_name, sl.change_amount, sl.reason, sl.changed_at FROM stock_log sl JOIN products p ON sl.product_id = p.id ${timeCondition} ORDER BY sl.changed_at DESC LIMIT 200`);
     res.json(result.rows);
   } catch (err) {
-    console.error('Analytics logs error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 12. DELETE: Στοχευμένη Διαγραφή Logs / Ιστορικού Κίνησης (ΝΕΟ)
 app.delete('/api/analytics/logs/clear', async (req, res) => {
-  const { range } = req.body; // 'week', 'month', 'year', 'all'
+  const { range } = req.body;
   let query = "";
-
   if (range === 'week') query = "DELETE FROM stock_log WHERE changed_at >= NOW() - INTERVAL '7 days'";
   else if (range === 'month') query = "DELETE FROM stock_log WHERE changed_at >= NOW() - INTERVAL '30 days'";
   else if (range === 'year') query = "DELETE FROM stock_log WHERE changed_at >= NOW() - INTERVAL '365 days'";
   else if (range === 'all') query = "TRUNCATE TABLE stock_log RESTART IDENTITY CASCADE";
-
   try {
     await pool.query(query);
     res.json({ success: true });
   } catch (err) {
-    console.error('Clear logs error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-// 13. POST: ΟΛΙΚΟ RESET ΒΑΣΗΣ ΔΕΔΟΜΕΝΩΝ
 app.post('/api/reset-database', async (req, res) => {
   try {
     await pool.query('TRUNCATE TABLE order_items, orders, stock_log, products RESTART IDENTITY CASCADE');
     res.json({ success: true });
   } catch (err) {
-    console.error('Reset database error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
+    res.status(500).json({ error: 'Database error' });
   }
 });
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+app.get('*', (req, res) => { res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
