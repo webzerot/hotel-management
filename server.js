@@ -44,12 +44,13 @@ app.get('/api/products', async (req, res) => {
 
 // 2. POST: Προσθήκη προϊόντος
 app.post('/api/products', async (req, res) => {
-  let { name, stock, min_required, supplier } = req.body;
+  let { name, stock, min_required, supplier, suggested_qty } = req.body;
   if (!supplier || supplier.trim() === '') supplier = 'Άγνωστος';
+  const sugQty = suggested_qty ? parseInt(suggested_qty) : 5;
   try {
     const result = await pool.query(
-      'INSERT INTO products (name, stock, min_required, supplier) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name, stock, min_required, supplier]
+      'INSERT INTO products (name, stock, min_required, supplier, suggested_qty) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [name, stock, min_required, supplier, sugQty]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -61,12 +62,13 @@ app.post('/api/products', async (req, res) => {
 // 3. PUT: Quick Edit Προϊόντος (Inline)
 app.put('/api/products/:id', async (req, res) => {
   const { id } = req.params;
-  let { name, min_required, supplier } = req.body;
+  let { name, min_required, supplier, suggested_qty } = req.body;
   if (!supplier || supplier.trim() === '') supplier = 'Άγνωστος';
+  const sugQty = suggested_qty ? parseInt(suggested_qty) : 5;
   try {
     const result = await pool.query(
-      'UPDATE products SET name = $1, min_required = $2, supplier = $3 WHERE id = $4 RETURNING *',
-      [name, min_required, supplier, id]
+      'UPDATE products SET name = $1, min_required = $2, supplier = $3, suggested_qty = $4 WHERE id = $5 RETURNING *',
+      [name, min_required, supplier, sugQty, id]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -144,11 +146,10 @@ app.post('/api/orders/receive', async (req, res) => {
   }
 });
 
-// 7. DELETE: Διαγραφή Κατά Λάθος Παραγγελίας (ΝΕΟ FEATURE)
+// 7. DELETE: Διαγραφή Κατά Λάθος Παραγγελίας
 app.delete('/api/orders/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    // Λόγω του ON DELETE CASCADE στην SQL δομή μας, σβήνοντας την παραγγελία σβήνονται αυτόματα και τα order_items της!
     await pool.query('DELETE FROM orders WHERE id = $1', [id]);
     res.json({ success: true });
   } catch (err) {
@@ -162,6 +163,4 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
