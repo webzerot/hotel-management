@@ -1,12 +1,16 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { Pool } = require('pg');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Χειροκίνητη σύνδεση χωρίς το DATABASE_URL του Render για αποφυγή του IPv6 bug
+// Σερβίρισμα των στατικών αρχείων (HTML, CSS, JS) από τον κεντρικό φάκελο
+app.use(express.static(path.join(__dirname)));
+
+// Χειροκίνητη σύνδεση IPv4 με Supabase
 const pool = new Pool({
   host: 'db.mzdecptbtpgkzpbplwjp.supabase.co',
   port: 5432,
@@ -42,6 +46,11 @@ app.post('/api/products', async (req, res) => {
     console.error(err);
     res.status(500).json({ error: 'Database error' });
   }
+});
+
+// Για οποιοδήποτε άλλο route, στείλε το index.html της σελίδας
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
