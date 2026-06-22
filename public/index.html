@@ -50,6 +50,26 @@
         .supplier-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
         .supplier-title { font-size: 18px; font-weight: bold; color: #2b6cb0; margin: 0; }
         .quick-add-prod-box { background: #f0fff4; border: 1px dashed #48bb78; padding: 15px; border-radius: 6px; margin-top: 15px; }
+
+        /* ΚΟΥΜΠΙ PDF */
+        .btn-pdf { background-color: #1a365d; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-pdf:hover { background-color: #2b6cb0; }
+
+        /* 🖨️ CSS ΓΙΑ ΕΚΤΥΠΩΣΗ / PDF - ΚΡΥΒΕΙ ΤΑ ΑΣΧΕΤΑ ΣΤΟΙΧΕΙΑ ΣΤΟ PDF */
+        @media print {
+            body { background: white; color: black; }
+            header, .nav-tabs, #productForm, .manual-add-box, form, button, .btn-sm, .btn-delete, .btn-clean, .btn-pdf, .danger-zone, .form-grid, #analytics-time-range {
+                display: none !important;
+            }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .card, .supplier-block, .order-card { box-shadow: none !important; border: none !important; padding: 0 !important; margin-bottom: 30px !important; page-break-inside: avoid; }
+            .tab-content { display: none !important; }
+            .tab-content.active { display: block !important; }
+            table { min-width: 100% !important; }
+            th { background-color: #f2f2f2 !important; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .chart-bar-container { border: 1px solid #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .chart-bar { background-color: #319795 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
     </style>
 </head>
 <body>
@@ -70,7 +90,6 @@
 
     <div class="container">
         
-        <!-- TAB 1: ΑΠΟΘΗΚΗ -->
         <div id="tab-inventory" class="tab-content active">
             <div class="card">
                 <h2>Προσθήκη Νέου Είδους</h2>
@@ -115,7 +134,6 @@
             </div>
         </div>
 
-        <!-- TAB 2: ΠΡΟΜΗΘΕΥΤΕΣ -->
         <div id="tab-suppliers" class="tab-content">
             <div class="card">
                 <h2>Προσθήκη Νέου Προμηθευτή</h2>
@@ -132,10 +150,13 @@
             <div id="suppliers-list-container"></div>
         </div>
 
-        <!-- TAB 3: ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ -->
         <div id="tab-orders" class="tab-content">
             <div class="card">
-                <h2>Δημιουργία Παραγγελίας</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+                    <h2 style="margin:0;">Δημιουργία Παραγγελίας</h2>
+                    <button type="button" class="btn-pdf" onclick="window.print()">📄 Αποθήκευση Λίστας (PDF)</button>
+                </div>
+                
                 <div class="manual-add-box">
                     <div style="flex: 2;">
                         <select id="manual-product-select"><option value="">-- Επιλέξτε Προϊόν --</option></select>
@@ -150,7 +171,6 @@
             </div>
         </div>
 
-        <!-- TAB 4: ΠΑΡΑΛΑΒΕΣ -->
         <div id="tab-receiving" class="tab-content">
             <div class="card">
                 <h2>Εκκρεμείς Παραγγελίες προς Παραλαβή / Διαγραφή</h2>
@@ -158,26 +178,28 @@
             </div>
         </div>
 
-        <!-- TAB 5: ΓΕΝΙΚΟ ΙΣΤΟΡΙΚΟ -->
         <div id="tab-history" class="tab-content">
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
-                    <h2>Γενικό Αρχείο Παραγγελιών</h2>
+                    <h2 style="margin:0;">Γενικό Αρχείο Παραγγελιών</h2>
+                    <button type="button" class="btn-pdf" onclick="window.print()">Document_Scanner 📄 Εξαγωγή Ιστορικού (PDF)</button>
+                </div>
+                <div style="text-align: right; margin-bottom: 15px;">
                     <button class="btn-delete" style="background-color: #cbd5e0; color: #4a5568;" onclick="clearAllOrdersHistory()">🗑️ Καθαρισμός Ιστορικού</button>
                 </div>
                 <div id="all-orders-history-container"></div>
             </div>
         </div>
 
-        <!-- TAB 6: ANALYTICS -->
         <div id="tab-analytics" class="tab-content">
-            <div class="card" style="margin-bottom: 20px;">
+            <div class="card" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <select id="analytics-time-range" style="max-width: 200px;" onchange="loadAnalytics()">
                     <option value="all">Όλο το ιστορικό</option>
                     <option value="week">Τελευταία Εβδομάδα</option>
                     <option value="month">Τελευταίος Μήνας</option>
                     <option value="year">Τελευταίο Έτος</option>
                 </select>
+                <button type="button" class="btn-pdf" onclick="window.print()">📊 Αποθήκευση Analytics (PDF)</button>
             </div>
             <div class="stats-grid">
                 <div class="stat-box" style="border-left-color: #2b6cb0;"><h3>Σύνολο Ειδών</h3><div class="num" id="stat-total-items">0</div></div>
