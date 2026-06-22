@@ -77,7 +77,19 @@ app.put('/api/products/:id', async (req, res) => {
   }
 });
 
-// 4. POST: Δημιουργία Νέας Παραγγελίας
+// 4. DELETE: Οριστική Διαγραφή Προϊόντος
+app.delete('/api/products/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM products WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete product error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
+  }
+});
+
+// 5. POST: Δημιουργία Νέας Παραγγελίας
 app.post('/api/orders', async (req, res) => {
   const { ordered_by, items } = req.body; 
   try {
@@ -100,7 +112,7 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-// 5. GET: Λίστα Εκκρεμών Παραγγελιών
+// 6. GET: Λίστα Εκκρεμών Παραγγελιών
 app.get('/api/orders/pending', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -119,7 +131,7 @@ app.get('/api/orders/pending', async (req, res) => {
   }
 });
 
-// 6. POST: Επιβεβαίωση Παραλαβής
+// 7. POST: Επιβεβαίωση Παραλαβής
 app.post('/api/orders/receive', async (req, res) => {
   const { order_id, items } = req.body; 
   try {
@@ -146,7 +158,7 @@ app.post('/api/orders/receive', async (req, res) => {
   }
 });
 
-// 7. DELETE: Διαγραφή Κατά Λάθος Παραγγελίας
+// 8. DELETE: Διαγραφή Κατά Λάθος Παραγγελίας
 app.delete('/api/orders/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -154,6 +166,18 @@ app.delete('/api/orders/:id', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Delete order error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
+  }
+});
+
+// 9. POST: ΟΛΙΚΟ RESET ΒΑΣΗΣ ΔΕΔΟΜΕΝΩΝ (ΝΕΟ)
+app.post('/api/reset-database', async (req, res) => {
+  try {
+    // Καθαρίζει όλους τους πίνακες και μηδενίζει τα IDs (CASCADE για ασφάλεια)
+    await pool.query('TRUNCATE TABLE order_items, orders, stock_log, products RESTART IDENTITY CASCADE');
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Reset database error:', err.message);
     res.status(500).json({ error: 'Database error', details: err.message });
   }
 });
