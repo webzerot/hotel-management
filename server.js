@@ -9,12 +9,13 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const pool = new Pool({
-  host: 'db.mzdecptbtpgkzpbplwjp.supabase.co',  // Direct connection, όχι pooler
-  port: 5432,
-  user: 'postgres',                               // Απλό username, ΟΧΙ το tenant format
+  host: 'aws-0-eu-central-1.pooler.supabase.com',
+  port: 6543,
+  user: 'postgres.mzdecptbtpgkzpbplwjp',
   password: 'hotel-management1',
   database: 'postgres',
   ssl: { rejectUnauthorized: false },
+  family: 4,
   max: 3,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 15000,
