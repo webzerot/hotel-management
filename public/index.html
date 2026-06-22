@@ -6,129 +6,254 @@
     <title>Hotel Breakfast Inventory</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f7fafc; color: #2d3748; }
-        header { background-color: #1a365d; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .nav-tabs { display: flex; background: #2b6cb0; padding: 0 10px; overflow-x: auto; white-space: nowrap; }
-        .tab-btn { background: none; border: none; color: #e2e8f0; padding: 15px 20px; cursor: pointer; font-weight: bold; }
+        header { background-color: #1a365d; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { margin: 0; font-size: 22px; }
+        .nav-tabs { display: flex; background: #2b6cb0; padding: 0 10px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+        .nav-tabs::-webkit-scrollbar { display: none; }
+        .tab-btn { background: none; border: none; color: #e2e8f0; padding: 15px 20px; font-size: 16px; cursor: pointer; font-weight: bold; transition: 0.2s; flex-shrink: 0; }
+        .tab-btn:hover { color: white; background: #2c5282; }
         .tab-btn.active { color: white; background: #1a365d; border-bottom: 3px solid #63b3ed; }
         .container { max-width: 1100px; margin: 25px auto; padding: 0 20px; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .card h2 { margin-top: 0; color: #1a365d; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 15px; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 5px; }
-        button { cursor: pointer; border: none; border-radius: 5px; padding: 10px; font-weight: bold; }
-        .btn-primary { background-color: #319795; color: white; }
-        .btn-delete { background-color: #e53e3e; color: white; }
-        .table-responsive { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 500px; }
-        th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
-        .pie-chart { width: 150px; height: 150px; border-radius: 50%; margin: 10px auto; background: #edf2f7; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 5px; box-sizing: border-box; font-size: 14px; }
+        button.btn-primary { background-color: #319795; color: white; border: none; padding: 12px; font-size: 15px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; }
+        button.btn-primary:hover { background-color: #2c7a7b; }
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; min-width: 600px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #edf2f7; color: #4a5568; }
+        .alert-badge { background-color: #fed7d7; color: #9b2c2c; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .ok-badge { background-color: #c6f6d5; color: #22543d; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .pending-badge { background-color: #feebc8; color: #c05621; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; border: none; margin-right: 5px; }
+        .btn-edit { background-color: #4299e1; color: white; }
+        .btn-save { background-color: #48bb78; color: white; }
+        .btn-delete { background-color: #e53e3e; color: white; font-weight: bold; padding: 8px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 13px; }
+        .btn-quick-stock { border: none; padding: 6px 12px; font-size: 14px; font-weight: bold; border-radius: 4px; cursor: pointer; color: white; margin-right: 3px; }
+        .order-card { border: 1px solid #cbd5e0; padding: 15px; border-radius: 6px; margin-bottom: 15px; background: #f7fafc; }
+        .manual-add-box { background: #ebf8ff; border: 1px solid #bee3f8; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end; }
+        .danger-zone { margin-top: 50px; border-top: 2px dashed #e53e3e; padding-top: 20px; text-align: center; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-box { background: white; padding: 15px; border-radius: 8px; border-left: 5px solid #2b6cb0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
+        .stat-box h3 { margin: 0 0 8px 0; font-size: 13px; color: #718096; text-transform: uppercase; }
+        .stat-box .num { font-size: 24px; font-weight: bold; color: #1a365d; }
+        .chart-bar-container { background: #edf2f7; border-radius: 5px; height: 24px; width: 100%; overflow: hidden; margin-top: 5px; position: relative; }
+        .chart-bar { background: #319795; height: 100%; border-radius: 5px; transition: width 0.5s ease; }
+        .chart-label { position: absolute; left: 10px; top: 2px; font-size: 13px; font-weight: bold; color: #1a365d; }
+        .btn-clean { background-color: #dd6b20; color: white; border: none; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 13px; margin-right: 8px; margin-bottom: 8px; }
+        .supplier-block { border: 1px solid #2b6cb0; padding: 20px; border-radius: 8px; margin-bottom: 25px; background: #fff; }
+        .supplier-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .supplier-title { font-size: 18px; font-weight: bold; color: #2b6cb0; margin: 0; }
+        .quick-add-prod-box { background: #f0fff4; border: 1px dashed #48bb78; padding: 15px; border-radius: 6px; margin-top: 15px; }
+        .btn-pdf { background-color: #1a365d; color: white; border: none; padding: 8px 15px; font-weight: bold; border-radius: 5px; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; }
+        .analytics-split-grid { display: grid; grid-template-columns: 1fr; gap: 20px; margin-bottom: 25px; }
+        @media(min-width: 850px) { .analytics-split-grid { grid-template-columns: 1.3fr 1fr; } }
+        .pie-chart-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 15px; }
+        .pie-chart { width: 180px; height: 180px; border-radius: 50%; background: conic-gradient(#edf2f7 0% 100%); box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .pie-legend { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; font-size: 12px; font-weight: bold; }
+        .legend-item { display: flex; align-items: center; gap: 5px; }
+        .legend-color { width: 12px; height: 12px; display: inline-block; border-radius: 2px; }
+
+        @media print {
+            body { background: white; color: black; }
+            header, .nav-tabs, #productForm, .manual-add-box, form, button, .btn-sm, .btn-delete, .btn-clean, .btn-pdf, .danger-zone, .form-grid, #analytics-time-range, .action-buttons-order, .card-clean-logs, .btn-quick-stock, th:nth-child(3), td:nth-child(3), th:nth-child(7), td:nth-child(7) { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .card, .supplier-block, .order-card { box-shadow: none !important; border: none !important; padding: 0 !important; margin-bottom: 30px !important; page-break-inside: avoid; }
+            .tab-content { display: none !important; }
+            .tab-content.active { display: block !important; }
+            table { min-width: 100% !important; }
+            th { background-color: #edf2f7 !important; color: black !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .chart-bar-container, .pie-chart { border: 1px solid #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
     </style>
 </head>
 <body>
-    <header><h1>Hotel Breakfast 🍳</h1></header>
+
+    <header>
+        <h1>Hotel Breakfast Control Panel 🍳</h1>
+        <div style="font-weight: bold; background: #319795; padding: 5px 10px; border-radius: 4px;">Live</div>
+    </header>
+
     <div class="nav-tabs">
         <button class="tab-btn active" onclick="switchTab('tab-inventory')">📋 Αποθήκη</button>
         <button class="tab-btn" onclick="switchTab('tab-suppliers'); loadSuppliersPage();">🏢 Προμηθευτές</button>
         <button class="tab-btn" onclick="switchTab('tab-orders'); initOrderPage();">🛒 Νέα Παραγγελία</button>
+        <button class="tab-btn" onclick="switchTab('tab-receiving'); loadPendingOrders();">🚚 Παραλαβές</button>
+        <button class="tab-btn" onclick="switchTab('tab-history'); loadAllOrdersHistory();">📜 Ιστορικό Παραγγελιών</button>
         <button class="tab-btn" onclick="switchTab('tab-analytics'); loadAnalytics();">📊 Στατιστικά</button>
     </div>
 
     <div class="container">
         <div id="tab-inventory" class="tab-content active">
             <div class="card">
-                <h2>Αποθήκη</h2>
+                <h2>Προσθήκη Νέου Είδους</h2>
+                <form id="productForm">
+                    <div class="form-grid">
+                        <input type="text" id="p-name" placeholder="Όνομα προϊόντος" required>
+                        <input type="number" id="p-stock" placeholder="Απόθεμα" required min="0">
+                        <input type="number" id="p-min" placeholder="Όριο Ασφαλείας" required min="0">
+                        <input type="number" id="p-sug" placeholder="Προτειν. Ποσότητα" required min="1">
+                        <input type="text" id="p-supplier" placeholder="Προμηθευτής" list="suppliers-datalist">
+                        <datalist id="suppliers-datalist"></datalist>
+                    </div>
+                    <button type="submit" class="btn-primary">Προσθήκη στην Αποθήκη +</button>
+                </form>
+            </div>
+            <div class="card">
+                <h2>Τρέχον Απόθεμα Αποθήκης</h2>
+                <div class="form-grid" style="margin-bottom: 20px;">
+                    <input type="text" id="filter-supplier" placeholder="Φίλτρο ανά Προμηθευτή..." oninput="renderInventoryTable()">
+                    <select id="filter-status" onchange="renderInventoryTable()">
+                        <option value="all">Όλα τα προϊόντα</option>
+                        <option value="low">Μόνο ελλείψεις (Κόκκινα)</option>
+                    </select>
+                </div>
                 <div class="table-responsive">
                     <table>
-                        <thead><tr><th>Προϊόν</th><th>Απόθεμα</th><th>+/-</th><th>Ενέργειες</th></tr></thead>
+                        <thead>
+                            <tr><th>Προϊόν</th><th>Απόθεμα</th><th>Γρήγορη Χρήση</th><th>Όριο Ασφαλείας</th><th>Προτειν. Ποσότητα</th><th>Προμηθευτής</th><th>Κατάσταση</th><th>Ενέργειες</th></tr>
+                        </thead>
                         <tbody id="inventory-body"></tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <div id="tab-suppliers" class="tab-content"><div id="suppliers-list-container" class="card"></div></div>
+        <div id="tab-suppliers" class="tab-content">
+            <div class="card">
+                <h2>Προσθήκη Νέου Προμηθευτή</h2>
+                <div class="form-grid" style="align-items: flex-end;">
+                    <input type="text" id="new-supplier-name" placeholder="Όνομα Προμηθευτή (π.χ. ΜΑΥΡΟΥΔΗΣ)">
+                    <input type="text" id="new-supplier-phone" placeholder="Τηλέφωνο (π.χ. 2310XXXXXX)">
+                    <button type="button" class="btn-primary" onclick="addNewSupplierFromTab()">➕ Προσθήκη</button>
+                </div>
+                <div style="margin-top: 10px; text-align: right;">
+                    <button class="btn-delete" style="padding: 8px 12px; font-size:12px;" onclick="clearAllSuppliers()">🗑️ Διαγραφή ΟΛΩΝ</button>
+                </div>
+            </div>
+            <div id="suppliers-list-container"></div>
+        </div>
 
         <div id="tab-orders" class="tab-content">
             <div class="card">
-                <h2>Δημιουργία Παραγγελίας</h2>
-                <div class="manual-add-box" style="display:flex; gap:10px;">
-                    <select id="manual-product-select" style="flex:2;"><option value="">-- Επιλέξτε Προϊόν --</option></select>
-                    <button class="btn-primary" style="flex:1;" onclick="addManualProductToOrder()">➕ Προσθήκη</button>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+                    <h2 style="margin:0;">Δημιουργία Παραγγελίας</h2>
+                    <button type="button" class="btn-pdf" onclick="window.print()">📄 PDF</button>
                 </div>
+                <div class="manual-add-box">
+                    <div style="flex: 2;"><select id="manual-product-select"><option value="">-- Επιλέξτε Προϊόν --</option></select></div>
+                    <button type="button" class="btn-primary" style="flex: 1; padding: 10px;" onclick="addManualProductToOrder()">➕ Προσθήκη</button>
+                </div>
+                <div class="action-buttons-order" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <button type="button" class="btn-primary" style="background-color: #e53e3e; max-width: 180px; padding: 8px 12px; font-size: 13px;" onclick="clearEntireCurrentOrder()">🧹 Αφαίρεση Όλων</button>
+                    <button type="button" class="btn-primary" style="background-color: #2b6cb0; max-width: 250px; padding: 8px 12px; font-size: 13px;" onclick="addAllLowStockProductsAutomatically()">🚨 Αυτόματη Προσθήκη</button>
+                </div>
+                <div style="margin-bottom: 20px; max-width: 300px;"><input type="text" id="order-buyer" placeholder="Όνομα ατόμου"></div>
                 <div id="order-groups-container"></div>
-                <button class="btn-primary" onclick="submitOrder()">Αποστολή</button>
+                <button type="button" class="btn-primary" style="background-color: #2b6cb0;" onclick="submitOrder()">Αποστολή 🚀</button>
+            </div>
+        </div>
+
+        <div id="tab-receiving" class="tab-content">
+            <div class="card"><h2>Εκκρεμείς Παραγγελίες</h2><div id="pending-orders-container"></div></div>
+        </div>
+
+        <div id="tab-history" class="tab-content">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
+                    <h2>Ιστορικό Παραγγελιών</h2>
+                    <button type="button" class="btn-pdf" onclick="window.print()">📄 PDF</button>
+                </div>
+                <div id="all-orders-history-container"></div>
             </div>
         </div>
 
         <div id="tab-analytics" class="tab-content">
-            <div class="card">
-                <h2>📊 Στατιστικά</h2>
-                <div id="analytics-pie-chart" class="pie-chart"></div>
-                <div id="analytics-suppliers-expenses-body"></div>
+            <div class="card" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <select id="analytics-time-range" style="max-width: 200px;" onchange="loadAnalytics()">
+                    <option value="all">Όλο το ιστορικό</option>
+                    <option value="week">Τελευταία Εβδομάδα</option>
+                    <option value="month">Τελευταίος Μήνας</option>
+                    <option value="year">Τελευταίο Έτος</option>
+                </select>
+                <button type="button" class="btn-pdf" onclick="window.print()">📊 PDF</button>
+            </div>
+            <div class="stats-grid">
+                <div class="stat-box" style="border-left-color: #2b6cb0;"><h3>Σύνολο Ειδών</h3><div class="num" id="stat-total-items">0</div></div>
+                <div class="stat-box" style="border-left-color: #e53e3e;"><h3>Ελλείψεις</h3><div class="num" id="stat-low-items" style="color: #e53e3e;">0</div></div>
+                <div class="stat-box" style="border-left-color: #3182ce;"><h3>Εκκρεμείς</h3><div class="num" id="stat-pending-orders" style="color: #3182ce;">0</div></div>
+                <div class="stat-box" style="border-left-color: #38a169;"><h3>Έξοδα</h3><div class="num" id="stat-total-expenses" style="color: #38a169;">0.00 €</div></div>
+                <div class="stat-box" style="border-left-color: #805ad5;"><h3>Μέσο Κόστος</h3><div class="num" id="stat-avg-cost" style="color: #805ad5;">0.00 €</div></div>
+                <div class="stat-box" style="border-left-color: #319795;"><h3>Ολοκληρωμένες</h3><div class="num" id="stat-completed-orders" style="color: #319795;">0</div></div>
+            </div>
+            <div class="analytics-split-grid">
+                <div class="card" style="margin-bottom:0;">
+                    <h2>💰 Έξοδα ανά Προμηθευτή</h2>
+                    <div class="table-responsive"><table><thead><tr><th>Προμηθευτής</th><th>Ευρώ</th><th>%</th></tr></thead><tbody id="analytics-suppliers-expenses-body"></tbody></table></div>
+                </div>
+                <div class="card" style="margin-bottom:0; display:flex; justify-content:center; align-items:center;">
+                    <div class="pie-chart-box">
+                        <h3 style="margin:0 0 15px 0; color:#1a365d; font-size:16px;">📊 Διάγραμμα Εξόδων</h3>
+                        <div id="analytics-pie-chart" class="pie-chart"></div>
+                        <div id="analytics-pie-legend" class="pie-legend"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card"><h2>🚨 Ελλείψεις (SOS)</h2><div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Απόθεμα</th><th>Όριο</th><th>Προμηθευτής</th></tr></thead><tbody id="analytics-current-low-body"></tbody></table></div></div>
+            <div class="card"><h2>📦 Όγκος Παραλαβών</h2><div id="analytics-chart-container"></div></div>
+            <div class="card"><h2>📋 Ιστορικό Κινήσεων</h2><div class="table-responsive"><table><thead><tr><th>Ημερομηνία/Ώρα</th><th>Προϊόν</th><th>Ποσότητα</th><th>Αιτιολογία</th></tr></thead><tbody id="analytics-logs-body"></tbody></table></div></div>
+            <div class="card card-clean-logs" style="border: 1px solid #feebc8; background-color: #fffaf0;">
+                <h3>🧹 Καθαρισμός Ιστορικού</h3>
+                <div style="display:flex; flex-wrap:wrap;">
+                    <button class="btn-clean" onclick="clearLogsRange('week')">Εβδομάδα</button>
+                    <button class="btn-clean" onclick="clearLogsRange('month')">Μήνα</button>
+                    <button class="btn-clean" onclick="clearLogsRange('year')">Χρόνο</button>
+                    <button class="btn-clean" style="background-color:#e53e3e;" onclick="clearLogsRange('all')">🗑️ ΟΛΑ</button>
+                </div>
             </div>
         </div>
+        <div class="danger-zone"><button class="btn-delete" style="background-color: #e53e3e;" onclick="resetEntireDatabase()">⚠️ Ολικό Reset</button></div>
     </div>
 
     <script>
         const API_BASE = 'https://hotel-management-vk0r.onrender.com/api';
         let allProducts = [];
         let currentOrderList = [];
-
-        function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); document.getElementById(tabId).classList.add('active'); if(event) event.target.classList.add('active'); }
-        
-        async function loadInventory() { 
-            const res = await fetch(API_BASE + '/products'); 
-            allProducts = await res.json(); 
-            renderInventoryTable(); 
-        }
-
-        function renderInventoryTable() {
-            const tbody = document.getElementById('inventory-body'); tbody.innerHTML = '';
-            allProducts.forEach(p => {
-                if(p.name.startsWith('Καρτέλα ')) return;
-                tbody.innerHTML += `<tr><td>${p.name}</td><td><strong>${p.stock}</strong></td>
-                <td><button class="btn-quick-stock" style="background:#48bb78" onclick="changeQuickStock(${p.id}, 1)">+</button>
-                    <button class="btn-quick-stock" style="background:#dd6b20" onclick="changeQuickStock(${p.id}, -1)">-</button></td>
-                <td><button class="btn-delete" onclick="deleteProduct(${p.id})">🗑️</button></td></tr>`;
-            });
-        }
-
-        async function changeQuickStock(id, change) { await fetch(`${API_BASE}/products/${id}/quick-stock`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ change, reason: 'Manual' }) }); loadInventory(); }
-        async function deleteProduct(id) { await fetch(`${API_BASE}/products/${id}`, { method: 'DELETE' }); loadInventory(); }
-
-        // --- ΔΙΟΡΘΩΜΕΝΗ ΛΟΓΙΚΗ ΠΑΡΑΓΓΕΛΙΑΣ ---
-        function initOrderPage() {
-            const select = document.getElementById('manual-product-select');
-            select.innerHTML = '<option value="">-- Επιλέξτε Προϊόν --</option>';
-            allProducts.forEach(p => { 
-                if (!p.name.startsWith('Καρτέλα ')) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; 
-            });
-            renderOrderGroups();
-        }
-
-        function addManualProductToOrder() {
-            const select = document.getElementById('manual-product-select');
-            const p = allProducts.find(i => i.id == select.value);
-            if (p && !currentOrderList.find(i => i.id == p.id)) {
-                currentOrderList.push({...p, qty: 1});
-                renderOrderGroups();
-            } else if (!p) {
-                alert("Παρακαλώ επιλέξτε ένα έγκυρο προϊόν!");
-            }
-        }
-
-        function renderOrderGroups() {
-            const container = document.getElementById('order-groups-container');
-            container.innerHTML = currentOrderList.map(p => `
-                <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #ccc;">
-                    ${p.name} <button class="btn-delete" onclick="removeProductFromCurrentOrder(${p.id})">❌</button>
-                </div>`).join('');
-        }
-
-        function removeProductFromCurrentOrder(id) { currentOrderList = currentOrderList.filter(i => i.id != id); renderOrderGroups(); }
-        async function submitOrder() { alert("Η παραγγελία εστάλη!"); }
-        async function loadAnalytics() { console.log("Analytics loaded"); }
+        function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); document.getElementById(tabId).classList.add('active'); if(event && event.target && event.target.classList) event.target.classList.add('active'); }
+        async function loadInventory() { try { const res = await fetch(API_BASE + '/products'); allProducts = await res.json(); renderInventoryTable(); updateSuppliersDatalist(); } catch (err) { console.error(err); } }
+        function updateSuppliersDatalist() { const datalist = document.getElementById('suppliers-datalist'); datalist.innerHTML = ''; const sups = []; allProducts.forEach(p => { if(p.supplier && p.supplier !== 'Άγνωστος' && !sups.includes(p.supplier)) sups.push(p.supplier); }); sups.forEach(s => { datalist.innerHTML += '<option value="' + s + '">'; }); }
+        function renderInventoryTable() { const tbody = document.getElementById('inventory-body'); const supplierFilter = document.getElementById('filter-supplier').value.toLowerCase(); const statusFilter = document.getElementById('filter-status').value; tbody.innerHTML = ''; allProducts.forEach(p => { if (p.name.startsWith('Καρτέλα ')) return; const isLow = p.stock <= p.min_required; if (statusFilter === 'low' && !isLow) return; if (supplierFilter && !p.supplier.toLowerCase().includes(supplierFilter)) return; tbody.innerHTML += `<tr id="row-${p.id}"><td><span class="view-mode-${p.id}"><strong>${p.name}</strong></span><input type="text" class="edit-mode-${p.id}" value="${p.name}" style="display:none; max-width:150px;"></td><td><strong id="stock-val-${p.id}">${p.stock}</strong></td><td><button class="btn-quick-stock" style="background-color:#48bb78;" onclick="changeQuickStock(${p.id}, 1, 'Συμπλήρωση')">+</button><button class="btn-quick-stock" style="background-color:#dd6b20;" onclick="changeQuickStock(${p.id}, -1, 'Κατανάλωση στο Πρωινό')">-</button></td><td><span class="view-mode-${p.id}">${p.min_required}</span><input type="number" class="edit-mode-${p.id}" value="${p.min_required}" style="display:none; max-width:80px;"></td><td><span class="view-mode-${p.id}">${p.suggested_qty || 5}</span><input type="number" class="edit-mode-${p.id}" value="${p.suggested_qty || 5}" style="display:none; max-width:80px;"></td><td><span class="view-mode-${p.id}">${p.supplier}</span><input type="text" class="edit-mode-${p.id}" value="${p.supplier}" style="display:none; max-width:120px;"></td><td>${isLow ? '<span class="alert-badge">Χαμηλό</span>' : '<span class="ok-badge">OK</span>'}</td><td><button class="btn-sm btn-edit view-mode-${p.id}" onclick="enableEdit(${p.id})">✏️</button><button class="btn-sm btn-save edit-mode-${p.id}" onclick="saveEdit(${p.id})" style="display:none;">💾</button><button class="btn-sm view-mode-${p.id}" style="background-color:#e53e3e; color:white;" onclick="deleteProduct(${p.id}, '${p.name}')">🗑️</button></td></tr>`; }); }
+        async function changeQuickStock(id, change, reason) { try { const res = await fetch(`${API_BASE}/products/${id}/quick-stock`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ change, reason }) }); if (res.ok) { const updatedProduct = await res.json(); document.getElementById(`stock-val-${id}`).innerText = updatedProduct.stock; loadInventory(); } } catch (err) { console.error(err); } }
+        function enableEdit(id) { document.querySelectorAll('.view-mode-' + id).forEach(el => el.style.display = 'none'); document.querySelectorAll('.edit-mode-' + id).forEach(el => el.style.display = 'inline-block'); }
+        async function saveEdit(id) { const inputs = document.querySelectorAll('.edit-mode-' + id); const updatedData = { name: inputs[0].value, min_required: parseInt(inputs[1].value) || 0, suggested_qty: parseInt(inputs[2].value) || 5, supplier: inputs[3].value }; try { const res = await fetch(API_BASE + '/products/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedData) }); if (res.ok) { await loadInventory(); if(document.getElementById('tab-suppliers').classList.contains('active')) loadSuppliersPage(); } } catch (err) { console.error(err); } }
+        async function deleteProduct(id, name) { if (!confirm('Διαγραφή του ' + name + ';')) return; try { const res = await fetch(API_BASE + '/products/' + id, { method: 'DELETE' }); if (res.ok) { await loadInventory(); if(document.getElementById('tab-suppliers').classList.contains('active')) loadSuppliersPage(); } } catch (err) { console.error(err); } }
+        document.getElementById('productForm').addEventListener('submit', async (e) => { e.preventDefault(); const newProd = { name: document.getElementById('p-name').value, stock: parseInt(document.getElementById('p-stock').value) || 0, min_required: parseInt(document.getElementById('p-min').value) || 0, suggested_qty: parseInt(document.getElementById('p-sug').value) || 5, supplier: document.getElementById('p-supplier').value }; const res = await fetch(API_BASE + '/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newProd) }); if (res.ok) { document.getElementById('productForm').reset(); loadInventory(); } });
+        async function loadSuppliersPage() { const container = document.getElementById('suppliers-list-container'); container.innerHTML = '<p>Φόρτωση...</p>'; await loadInventory(); const supplierGroups = {}; const supplierPhones = {}; allProducts.forEach(p => { if (p.name.startsWith('Καρτέλα ') && p.name.includes(' - Τηλ:')) { const parts = p.name.replace('Καρτέλα ', '').split(' - Τηλ:'); supplierPhones[parts[0]] = parts[1]; return; } const sup = p.supplier || 'Άγνωστος'; if (!supplierGroups[sup]) supplierGroups[sup] = []; if (!p.name.startsWith('Καρτέλα ')) supplierGroups[sup].push(p); }); container.innerHTML = ''; for (let supName in supplierGroups) { if (supName === 'Άγνωστος' && supplierGroups[supName].length === 0) continue; const phone = supplierPhones[supName] || 'Δεν ορίστηκε'; const block = document.createElement('div'); block.className = 'supplier-block'; block.innerHTML = `<div class="supplier-header"><span class="supplier-title">🏢 ${supName} <span style="font-size:13px; color:#718096; font-weight:normal; margin-left:10px;">📞 Τηλ: ${phone}</span></span><div><button class="btn-sm btn-edit" onclick="editSupplierDetails('${supName}', '${phone}')">✏️ Edit</button><button class="btn-sm btn-delete" onclick="deleteSupplier('${supName}')">🗑️</button></div></div><div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Απόθεμα</th><th>Όριο</th><th>Προτειν.</th></tr></thead><tbody id="sup-body-${supName}"></tbody></table></div><div class="quick-add-prod-box"><h4 style="margin:0 0 10px 0; color:#2f855a;">➕ Προσθήκη</h4><div class="form-grid"><input type="text" id="add-name-${supName}" placeholder="Όνομα" required><input type="number" id="add-stock-${supName}" placeholder="Απόθεμα"><input type="number" id="add-min-${supName}" placeholder="Όριο"><input type="number" id="add-sug-${supName}" placeholder="Προτειν."></div><button type="button" class="btn-primary" style="background-color:#48bb78; max-width:180px; padding:8px;" onclick="quickAddProductToSupplier('${supName}')">Προσθήκη</button></div>`; container.appendChild(block); const sTbody = document.getElementById('sup-body-' + supName); if(supplierGroups[supName].length === 0) sTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Κανένα προϊόν.</td></tr>'; else supplierGroups[supName].forEach(p => sTbody.innerHTML += '<tr><td><strong>'+p.name+'</strong></td><td>'+p.stock+'</td><td>'+p.min_required+'</td><td>'+p.suggested_qty+'</td></tr>'); } }
+        async function addNewSupplierFromTab() { const name = document.getElementById('new-supplier-name').value.trim(); const phone = document.getElementById('new-supplier-phone').value.trim() || 'Δεν ορίστηκε'; if (!name) { alert("Βάλτε όνομα προμηθευτή."); return; } try { const res = await fetch(API_BASE + '/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Καρτέλα ' + name + ' - Τηλ:' + phone, stock: 0, min_required: 0, supplier: name, suggested_qty: 5 }) }); if (res.ok) { document.getElementById('new-supplier-name').value = ''; document.getElementById('new-supplier-phone').value = ''; loadSuppliersPage(); } } catch(err) { console.error(err); } }
+        async function quickAddProductToSupplier(supName) { const name = document.getElementById('add-name-' + supName).value.trim(); const stock = parseInt(document.getElementById('add-stock-' + supName).value) || 0; const min_required = parseInt(document.getElementById('add-min-' + supName).value) || 0; const suggested_qty = parseInt(document.getElementById('add-sug-' + supName).value) || 5; if (!name) { alert("Βάλτε όνομα."); return; } try { const res = await fetch(API_BASE + '/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, stock: stock, min_required: min_required, supplier: supName, suggested_qty: suggested_qty }) }); if (res.ok) loadSuppliersPage(); } catch (err) { console.error(err); } }
+        async function editSupplierDetails(oldName, oldPhone) { const newName = prompt("Νέο όνομα:", oldName); if (!newName || newName.trim() === '') return; const newPhone = prompt("Νέο τηλέφωνο:", oldPhone); for (let p of allProducts) { if (p.supplier === oldName) { let updatedName = p.name; if (p.name.startsWith('Καρτέλα ')) updatedName = 'Καρτέλα ' + newName + ' - Τηλ:' + newPhone; await fetch(API_BASE + '/products/' + p.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: updatedName, min_required: p.min_required, suggested_qty: p.suggested_qty, supplier: newName }) }); } } loadSuppliersPage(); }
+        async function deleteSupplier(supName) { if (!confirm('Διαγραφή ' + supName + ';')) return; try { const res = await fetch(API_BASE + '/suppliers/' + supName, { method: 'DELETE' }); if (res.ok) loadSuppliersPage(); } catch(err) { console.error(err); } }
+        async function clearAllSuppliers() { if (!confirm("Διαγραφή όλων;")) return; try { for (let p of allProducts) { await fetch(API_BASE + '/products/' + p.id, { method: 'DELETE' }); } loadSuppliersPage(); } catch(err) { console.error(err); } }
+        function initOrderPage() { const select = document.getElementById('manual-product-select'); select.innerHTML = '<option value="">-- Επιλέξτε Προϊόν --</option>'; allProducts.forEach(p => { if (!p.name.startsWith('Καρτέλα ')) select.innerHTML += '<option value="' + p.id + '">' + p.name + ' (Απόθεμα: ' + p.stock + ')</option>'; }); addAllLowStockProductsAutomatically(); }
+        function addAllLowStockProductsAutomatically() { allProducts.forEach(p => { if (p.stock <= p.min_required && !p.name.startsWith('Καρτέλα ')) { if (!currentOrderList.some(item => item.id === p.id)) { currentOrderList.push({ id: p.id, name: p.name, stock: p.stock, min_required: p.min_required, supplier: p.supplier || 'Άγνωστος', suggested_qty: p.suggested_qty || 5, qty: '' }); } } }); renderOrderGroups(); }
+        function clearEntireCurrentOrder() { if (currentOrderList.length === 0) return; if (confirm("Άδειασμα λίστας;")) { currentOrderList = []; renderOrderGroups(); } }
+        function removeProductFromCurrentOrder(id) { currentOrderList = currentOrderList.filter(item => item.id !== id); renderOrderGroups(); }
+        function renderOrderGroups() { const container = document.getElementById('order-groups-container'); container.innerHTML = ''; const groups = {}; currentOrderList.forEach(item => { if (!groups[item.supplier]) groups[item.supplier] = []; groups[item.supplier].push(item); }); if (currentOrderList.length === 0) { container.innerHTML = '<p style="color:#718096;">Η λίστα είναι άδεια.</p>'; return; } for (let sup in groups) { const groupCard = document.createElement('div'); groupCard.className = 'card'; let innerTableRows = ''; groups[sup].forEach(p => { innerTableRows += `<tr><td><strong>${p.name}</strong></td><td>${p.stock}</td><td>${p.min_required}</td><td><span style="color:#2b6cb0; font-weight:bold;">${p.suggested_qty}</span></td><td><input type="number" class="order-qty-input" data-id="${p.id}" value="${p.qty}" placeholder="Ποσότητα..." min="1" oninput="updateQtyMemory(${p.id}, this.value)"></td><td style="text-align:right;"><button class="btn-sm" style="background-color:#e53e3e; color:white; font-weight:bold; padding:4px 8px; border-radius:4px;" onclick="removeProductFromCurrentOrder(${p.id})">❌</button></td></tr>`; }); groupCard.innerHTML = `<h3 style="color:#2b6cb0; margin-top:0;">👨‍💼 Προμηθευτής: ${sup}</h3><div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Απόθεμα</th><th>Όριο</th><th>Προτειν.</th><th style="width:150px;">Ποσότητα</th><th style="text-align:right;">Αφαίρεση</th></tr></thead><tbody>${innerTableRows}</tbody></table></div>`; container.appendChild(groupCard); } }
+        function updateQtyMemory(id, value) { const item = currentOrderList.find(i => i.id === id); if (item) item.qty = value === '' ? '' : parseInt(value); }
+        async function submitOrder() { const buyer = document.getElementById('order-buyer').value.trim(); if (!buyer) { alert("Βάλτε όνομα."); return; } const finalItems = currentOrderList.filter(i => i.qty !== '' && i.qty > 0).map(i => ({ product_id: i.id, requested_qty: i.qty })); if (finalItems.length === 0) { alert("Συμπληρώστε ποσότητα."); return; } try { const res = await fetch(API_BASE + '/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ordered_by: buyer, items: finalItems }) }); if (res.ok) { alert("Η παραγγελία καταγράφηκε!"); document.getElementById('order-buyer').value = ''; loadInventory(); initOrderPage(); } } catch (err) { console.error(err); } }
+        async function loadPendingOrders() { const container = document.getElementById('pending-orders-container'); container.innerHTML = '<p>Φόρτωση...</p>'; try { const res = await fetch(API_BASE + '/orders/pending'); const rawData = await res.json(); const ordersMap = {}; rawData.forEach(row => { if (!ordersMap[row.order_id]) ordersMap[row.order_id] = { id: row.order_id, buyer: row.ordered_by, date: row.created_at, items: [] }; ordersMap[row.order_id].items.push(row); }); container.innerHTML = ''; const ordersArray = Object.values(ordersMap); if (ordersArray.length === 0) { container.innerHTML = '<p style="color:#718096;">Καμία εκκρεμότητα.</p>'; return; } ordersArray.forEach(o => { const div = document.createElement('div'); div.className = 'order-card'; let innerRows = ''; o.items.forEach(item => { innerRows += '<tr><td>'+item.product_name+'</td><td>'+item.supplier+'</td><td><strong>'+item.requested_qty+'</strong></td><td><input type="number" class="receive-qty-input-'+o.id+'" data-pid="'+item.product_id+'" value="' + item.requested_qty + '" min="0"></td></tr>'; }); div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px; flex-wrap:wrap; gap:10px;"><span><strong>Παραγγελία #${o.id}</strong> - Από: 👤 ${o.buyer}</span><button class="btn-delete" onclick="deleteOrder(${o.id}, 'pending')">🗑️</button></div><div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Προμηθευτής</th><th>Ζητήθηκαν</th><th style="width:140px;">Πραγματική Παραλαβή</th></tr></thead><tbody>${innerRows}</tbody></table></div><div style="margin-top: 15px; max-width: 300px;"><label style="font-weight: bold; font-size:13px; display:block; margin-bottom:5px;">💶 Συνολικό Κόστος (€):</label><input type="text" id="receive-cost-${o.id}" placeholder="π.χ. 45.30"></div><button class="btn-primary" style="margin-top:10px; background-color:#38a169; padding:8px;" onclick="confirmReceipt(${o.id})">✔ Επιβεβαίωση Παραλαβής</button>`; container.appendChild(div); }); } catch (err) { console.error(err); } }
+        async function confirmReceipt(orderId) { const items = []; document.querySelectorAll('.receive-qty-input-' + orderId).forEach(input => { items.push({ product_id: parseInt(input.dataset.pid), received_qty: parseInt(input.value) || 0 }); }); const total_cost = document.getElementById('receive-cost-' + orderId).value; try { const res = await fetch(API_BASE + '/orders/receive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId, items: items, total_cost: total_cost }) }); if (res.ok) { alert("Ενημερώθηκε!"); loadInventory(); loadPendingOrders(); } } catch (err) { console.error(err); } }
+        async function loadAllOrdersHistory() { const container = document.getElementById('all-orders-history-container'); container.innerHTML = '<p>Φόρτωση...</p>'; try { const res = await fetch(API_BASE + '/orders/all'); const rawData = await res.json(); const ordersMap = {}; rawData.forEach(row => { if (!ordersMap[row.order_id]) ordersMap[row.order_id] = { id: row.order_id, buyer: row.ordered_by, status: row.status, date: row.created_at, total_cost: row.total_cost, items: [] }; ordersMap[row.order_id].items.push(row); }); container.innerHTML = ''; const ordersArray = Object.values(ordersMap); if (ordersArray.length === 0) { container.innerHTML = '<p style="color:#718096;">Το ιστορικό είναι άδειο.</p>'; return; } ordersArray.forEach(o => { const div = document.createElement('div'); div.className = 'order-card'; let historyRows = ''; o.items.forEach(item => { historyRows += '<tr><td>'+item.product_name+'</td><td>'+item.supplier+'</td><td><strong>'+item.requested_qty+'</strong></td><td>' + (o.status === 'Εκκρεμεί' ? '-' : '<strong>'+item.received_qty+'</strong>') + '</td></tr>'; }); div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px; flex-wrap:wrap; gap:10px;"><span><strong>Παραγγελία #${o.id}</strong> - 👤 ${o.buyer} (${o.status === 'Εκκρεμεί' ? '<span class="pending-badge">Εκκρεμεί</span>' : '<span class="ok-badge">Παραλήφθηκε</span>'})</span><div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:bold; background:#edf2f7; padding:4px 8px; border-radius:4px; font-size:13px; color:#2c5282;">💰 ${o.total_cost}</span><button class="btn-sm btn-edit" style="padding:4px 8px; font-size:11px;" onclick="updateHistoryCost(${o.id}, '${o.total_cost}')">✏️</button><button class="btn-delete" style="padding:4px 8px; font-size:11px;" onclick="deleteOrder(${o.id}, 'history')">🗑️</button></div></div><div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Προμηθευτής</th><th>Ζητήθηκαν</th><th>Ήρθαν</th></tr></thead><tbody>${historyRows}</tbody></table></div>`; container.appendChild(div); }); } catch (err) { console.error(err); } }
+        async function updateHistoryCost(orderId, currentCost) { const newCost = prompt("Νέο κόστος:", currentCost === 'Άγνωστο κόστος' ? '' : currentCost); if (newCost === null) return; try { const res = await fetch(`${API_BASE}/orders/${orderId}/cost`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ total_cost: newCost }) }); if (res.ok) loadAllOrdersHistory(); } catch (err) { console.error(err); } }
+        async function deleteOrder(orderId, source) { if (!confirm('Διαγραφή παραγγελίας #' + orderId + ';')) return; try { const res = await fetch(API_BASE + '/orders/' + orderId, { method: 'DELETE' }); if (res.ok) { if (source === 'pending') loadPendingOrders(); else loadAllOrdersHistory(); } } catch (err) { console.error(err); } }
+        async function clearAllOrdersHistory() { if (!confirm("Καθαρισμός όλου του ιστορικού;")) return; try { const res = await fetch(API_BASE + '/orders/all/clear', { method: 'DELETE' }); if (res.ok) loadAllOrdersHistory(); } catch (err) { console.error(err); } }
+        async function loadAnalytics() { const range = document.getElementById('analytics-time-range').value; try { const resOrders = await fetch(API_BASE + '/orders/pending'); const pendingData = await resOrders.json(); document.getElementById('stat-total-items').innerText = allProducts.filter(p => !p.name.startsWith('Καρτέλα ')).length; document.getElementById('stat-low-items').innerText = allProducts.filter(p => p.stock <= p.min_required && !p.name.startsWith('Καρτέλα ')).length; document.getElementById('stat-pending-orders').innerText = new Set(pendingData.map(r => r.order_id)).size; const lowTbody = document.getElementById('analytics-current-low-body'); lowTbody.innerHTML = ''; const currentLows = allProducts.filter(p => p.stock <= p.min_required && !p.name.startsWith('Καρτέλα ')); if(currentLows.length === 0) lowTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#48bb78; font-weight:bold;">✔ Όλα επαρκή!</td></tr>'; else currentLows.forEach(p => { lowTbody.innerHTML += `<tr><td><strong>${p.name}</strong></td><td><span class="alert-badge">${p.stock}</span></td><td>${p.min_required}</td><td>${p.supplier}</td></tr>`; }); const resLogs = await fetch(API_BASE + '/analytics/logs?range=' + range); const logsData = await resLogs.json(); const tbody = document.getElementById('analytics-logs-body'); tbody.innerHTML = ''; logsData.forEach(log => { tbody.innerHTML += '<tr><td>' + new Date(log.changed_at).toLocaleString('el-GR') + '</td><td><strong>' + log.product_name + '</strong></td><td>' + log.change_amount + '</td><td>' + log.reason + '</td></tr>'; }); const volumes = {}; logsData.forEach(log => { if (log.reason === 'Παραλαβή Παραγγελίας' || log.reason === 'Αρχική Εισαγωγή') volumes[log.product_name] = (volumes[log.product_name] || 0) + log.change_amount; }); const chartContainer = document.getElementById('analytics-chart-container'); chartContainer.innerHTML = ''; const entries = Object.entries(volumes); if(entries.length === 0) chartContainer.innerHTML = '<p>Όχι δεδομένα.</p>'; else { const maxVal = Math.max(...entries.map(e => e[1])); entries.forEach(([name, val]) => { const widthPct = maxVal > 0 ? (val / maxVal) * 100 : 0; chartContainer.innerHTML += '<div style="margin-bottom: 15px;"><span style="font-size: 14px; font-weight: bold;">' + name + '</span><div class="chart-bar-container"><div class="chart-bar" style="width: ' + widthPct + '%"></div><div class="chart-label">' + val + ' τμ.</div></div></div>'; }); } const resAllOrders = await fetch(API_BASE + '/orders/all'); const allOrdersData = await resAllOrders.json(); const uniqueOrdersMap = {}; allOrdersData.forEach(row => { if (row.status === 'Παραλήφθηκε') { if(!uniqueOrdersMap[row.order_id]) uniqueOrdersMap[row.order_id] = { total_cost: row.total_cost, date: new Date(row.created_at), suppliers: [] }; if(!uniqueOrdersMap[row.order_id].suppliers.includes(row.supplier)) uniqueOrdersMap[row.order_id].suppliers.push(row.supplier); } }); let totalExpenses = 0; let completedCount = 0; const supplierExpenses = {}; const now = new Date(); Object.values(uniqueOrdersMap).forEach(order => { let isInRange = true; const diffTime = Math.abs(now - order.date); const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); if (range === 'week' && diffDays > 7) isInRange = false; else if (range === 'month' && diffDays > 30) isInRange = false; else if (range === 'year' && diffDays > 365) isInRange = false; if (isInRange) { const cleanCost = parseFloat(order.total_cost.replace(/[^0-9.]/g, '')) || 0; totalExpenses += cleanCost; completedCount++; order.suppliers.forEach(sup => supplierExpenses[sup] = (supplierExpenses[sup] || 0) + (cleanCost / order.suppliers.length)); } }); document.getElementById('stat-total-expenses').innerText = totalExpenses.toFixed(2) + ' €'; document.getElementById('stat-avg-cost').innerText = (completedCount > 0 ? (totalExpenses / completedCount) : 0).toFixed(2) + ' €'; document.getElementById('stat-completed-orders').innerText = completedCount; const supTbody = document.getElementById('analytics-suppliers-expenses-body'); const pieChart = document.getElementById('analytics-pie-chart'); const pieLegend = document.getElementById('analytics-pie-legend'); supTbody.innerHTML = ''; pieLegend.innerHTML = ''; const supEntries = Object.entries(supplierExpenses); if(supEntries.length === 0) { supTbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">Όχι οικονομικά δεδομένα.</td></tr>'; pieChart.style.background = '#edf2f7'; } else { supEntries.sort((a,b) => b[1] - a[1]); const colors = ['#2b6cb0', '#319795', '#dd6b20', '#38a169', '#805ad5', '#e53e3e', '#d69e2e']; let conicGradientString = ''; let currentPercentageSum = 0; supEntries.forEach(([supName, amount], index) => { const pct = totalExpenses > 0 ? (amount / totalExpenses) * 100 : 0; const color = colors[index % colors.length]; supTbody.innerHTML += `<tr style="cursor:pointer;" onclick="alert('${supName}: ${amount.toFixed(2)} €')"><td><span style="display:inline-block; width:10px; height:12px; background:${color}; border-radius:2px; margin-right:5px;"></span><strong>${supName}</strong></td><td>${amount.toFixed(2)} €</td><td>${pct.toFixed(1)}%</td></tr>`; const nextPercentageSum = currentPercentageSum + pct; conicGradientString += `${color} ${currentPercentageSum.toFixed(2)}% ${nextPercentageSum.toFixed(2)}%,`; currentPercentageSum = nextPercentageSum; pieLegend.innerHTML += `<div class="legend-item" style="cursor:pointer;" onclick="alert('${supName}: ${amount.toFixed(2)} €')"><div class="legend-color" style="background:${color};"></div><span>${supName}</span></div>`; }); pieChart.style.background = `conic-gradient(${conicGradientString.slice(0, -1)})`; } } catch (err) { console.error(err); } }
+        async function clearLogsRange(range) { if (!confirm("Διαγραφή logs;")) return; try { const res = await fetch(API_BASE + '/analytics/logs/clear', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ range: range }) }); if (res.ok) loadAnalytics(); } catch (err) { console.error(err); } }
+        async function resetEntireDatabase() { if (!confirm("⚠️ Ολικό Reset;")) return; try { const res = await fetch(API_BASE + '/reset-database', { method: 'POST' }); if (res.ok) { loadInventory(); switchTab('tab-inventory'); } } catch (err) { console.error(err); } }
         loadInventory();
     </script>
 </body>
