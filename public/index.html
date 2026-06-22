@@ -26,11 +26,13 @@
         th { background-color: #edf2f7; color: #4a5568; }
         .alert-badge { background-color: #fed7d7; color: #9b2c2c; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .ok-badge { background-color: #c6f6d5; color: #22543d; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .supplier-group-header { background-color: #e2e8f0; font-weight: bold; color: #2b6cb0; }
         .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; border: none; }
         .btn-edit { background-color: #4299e1; color: white; }
         .btn-save { background-color: #48bb78; color: white; }
+        .btn-delete { background-color: #e53e3e; color: white; font-weight: bold; padding: 8px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 13px; }
+        .btn-delete:hover { background-color: #c53030; }
         .order-card { border: 1px solid #cbd5e0; padding: 15px; border-radius: 6px; margin-bottom: 15px; background: #f7fafc; }
+        .manual-add-box { background: #ebf8ff; border: 1px solid #bee3f8; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end; }
     </style>
 </head>
 <body>
@@ -42,13 +44,12 @@
 
     <div class="nav-tabs">
         <button class="tab-btn active" onclick="switchTab('tab-inventory')">📋 Αποθήκη</button>
-        <button class="tab-btn" onclick="switchTab('tab-orders'); loadOrderSuggestions();">🛒 Νέα Παραγγελία</button>
+        <button class="tab-btn" onclick="switchTab('tab-orders'); initOrderPage();">🛒 Νέα Παραγγελία</button>
         <button class="tab-btn" onclick="switchTab('tab-receiving'); loadPendingOrders();">🚚 Παραλαβές</button>
     </div>
 
     <div class="container">
         
-        <!-- TAB 1: ΑΠΟΘΗΚΗ -->
         <div id="tab-inventory" class="tab-content active">
             <div class="card">
                 <h2>Προσθήκη Νέου Είδους</h2>
@@ -88,25 +89,35 @@
             </div>
         </div>
 
-        <!-- TAB 2: ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ -->
         <div id="tab-orders" class="tab-content">
             <div class="card">
-                <h2>Δημιουργία Παραγγελίας από Ελλείψεις</h2>
-                <p style="color: #718096;">Τα προϊόντα που ακολουθούν βρίσκονται κάτω από το όριο ασφαλείας και είναι ομαδοποιημένα ανά προμηθευτή.</p>
+                <h2>Δημιουργία Παραγγελίας</h2>
+                <p style="color: #718096;">Τα προϊόντα σε έλλειψη έχουν προστεθεί αυτόματα. Μπορείτε να προσθέσετε χειροκίνητα και επιπλέον προϊόντα.</p>
+                
+                <div class="manual-add-box">
+                    <div style="flex: 2;">
+                        <label style="font-weight:bold; font-size:13px; display:block; margin-bottom:5px;">Προσθήκη προϊόντος εκτός ελλειμμάτων:</label>
+                        <select id="manual-product-select">
+                            <option value="">-- Επιλέξτε Προϊόν --</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-primary" style="flex: 1; padding: 10px;" onclick="addManualProductToOrder()">➕ Προσθήκη στη Λίστα</button>
+                </div>
+
                 <div style="margin-bottom: 20px; max-width: 300px;">
                     <label style="font-weight: bold; display:block; margin-bottom: 5px;">Όνομα ατόμου που παραγγέλνει:</label>
                     <input type="text" id="order-buyer" placeholder="π.χ. Γιώργος Παπαδόπουλος">
                 </div>
+
                 <div id="order-groups-container"></div>
                 <button type="button" class="btn-primary" style="margin-top: 15px; background-color: #2b6cb0;" onclick="submitOrder()">Αποστολή & Καταγραφή Παραγγελίας 🚀</button>
             </div>
         </div>
 
-        <!-- TAB 3: ΠΑΡΑΛΑΒΕΣ -->
         <div id="tab-receiving" class="tab-content">
             <div class="card">
-                <h2>Εκκρεμείς Παραγγελίες προς Παραλαβή</h2>
-                <p style="color: #718096;">Όταν καταφθάνουν τα προϊόντα, επιβεβαιώστε την τελική ποσότητα παραλαβής για να ενημερωθεί η αποθήκη.</p>
+                <h2>Εκκρεμείς Παραγγελίες προς Παραλαβή / Διαγραφή</h2>
+                <p style="color: #718096;">Επιβεβαιώστε την παραλαβή ή διαγράψτε μια παραγγελία αν έγινε κατά λάθος.</p>
                 <div id="pending-orders-container"></div>
             </div>
         </div>
@@ -116,6 +127,7 @@
     <script>
         const API_BASE = 'https://hotel-management-vk0r.onrender.com/api';
         let allProducts = [];
+        let currentOrderList = []; // Κρατάει τα προϊόντα που είναι στη λίστα παραγγελίας αυτή τη στιγμή
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -124,7 +136,7 @@
             event.target.classList.add('active');
         }
 
-        // --- TAB 1 ΛΟΓΙΚΗ (ΑΠΟΘΗΚΗ) ---
+        // --- TAB 1: ΑΠΟΘΗΚΗ ---
         async function loadInventory() {
             try {
                 const res = await fetch(`${API_BASE}/products`);
@@ -198,43 +210,91 @@
             if (res.ok) { document.getElementById('productForm').reset(); loadInventory(); }
         });
 
-        // --- TAB 2 ΛΟΓΙΚΗ (ΠΑΡΑΓΓΕΛΙΕΣ) ---
-        function loadOrderSuggestions() {
-            const container = document.getElementById('order-groups-container');
-            container.innerHTML = '';
-            
-            // Ομαδοποίηση ελλείψεων ανά προμηθευτή
-            const groups = {};
+
+        // --- TAB 2: ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ ---
+        function initOrderPage() {
+            // Γέμισμα του Dropdown χειροκίνητης προσθήκης
+            const select = document.getElementById('manual-product-select');
+            select.innerHTML = '<option value="">-- Επιλέξτε Προϊόν --</option>';
             allProducts.forEach(p => {
-                if (p.stock <= p.min_required) {
-                    const sup = p.supplier || 'Άγνωστος';
-                    if (!groups[sup]) groups[sup] = [];
-                    groups[sup].push(p);
-                }
+                select.innerHTML += `<option value="${p.id}">${p.name} (Απόθεμα: ${p.stock}, Προμ: ${p.supplier})</option>`;
             });
 
-            if (Object.keys(groups).length === 0) {
-                container.innerHTML = '<p style="color:#48bb78; font-weight:bold;">Δεν υπάρχουν ελλείψεις στην αποθήκη αυτή τη στιγμή!</p>';
+            // Φόρτωση αυτόματων ελλειμμάτων
+            currentOrderList = [];
+            allProducts.forEach(p => {
+                if (p.stock <= p.min_required) {
+                    const suggestedQty = (p.min_required * 2) - p.stock;
+                    currentOrderList.push({
+                        id: p.id,
+                        name: p.name,
+                        stock: p.stock,
+                        min_required: p.min_required,
+                        supplier: p.supplier || 'Άγνωστος',
+                        qty: suggestedQty > 0 ? suggestedQty : 5
+                    });
+                }
+            });
+            renderOrderGroups();
+        }
+
+        function addManualProductToOrder() {
+            const select = document.getElementById('manual-product-select');
+            const prodId = parseInt(select.value);
+            if (!prodId) return;
+
+            // Έλεγχος αν υπάρχει ήδη στη λίστα
+            if (currentOrderList.some(item => item.id === prodId)) {
+                alert("Αυτό το προϊόν βρίσκεται ήδη στη λίστα της παραγγελίας!");
+                return;
+            }
+
+            const p = allProducts.find(item => item.id === prodId);
+            if (p) {
+                currentOrderList.push({
+                    id: p.id,
+                    name: p.name,
+                    stock: p.stock,
+                    min_required: p.min_required,
+                    supplier: p.supplier || 'Άγνωστος',
+                    qty: 5 // Default αρχική ποσότητα για χειροκίνητη προσθήκη
+                });
+                renderOrderGroups();
+                select.value = '';
+            }
+        }
+
+        function renderOrderGroups() {
+            const container = document.getElementById('order-groups-container');
+            container.innerHTML = '';
+
+            const groups = {};
+            currentOrderList.forEach(item => {
+                if (!groups[item.supplier]) groups[item.supplier] = [];
+                groups[item.supplier].push(item);
+            });
+
+            if (currentOrderList.length === 0) {
+                container.innerHTML = '<p style="color:#718096;">Η λίστα παραγγελίας είναι άδεια.</p>';
                 return;
             }
 
             for (let sup in groups) {
                 const groupCard = document.createElement('div');
                 groupCard.className = 'card';
-                groupCard.innerHTML = `<h3 style="color:#2b6cb0; margin-top:0;">👨‍component Προμηθευτής: ${sup}</h3>`;
+                groupCard.innerHTML = `<h3 style="color:#2b6cb0; margin-top:0;">👨‍💼 Προμηθευτής: ${sup}</h3>`;
                 
                 const table = document.createElement('table');
                 table.innerHTML = `<thead><tr><th>Προϊόν</th><th>Τρέχον Απόθεμα</th><th>Όριο Ασφαλείας</th><th style="width:150px;">Ποσότητα Παραγγελίας</th></tr></thead>`;
                 const tbody = document.createElement('tbody');
 
                 groups[sup].forEach(p => {
-                    const suggestedQty = (p.min_required * 2) - p.stock; // Προτεινόμενο default νούμερο
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td><strong>${p.name}</strong></td>
                         <td>${p.stock}</td>
                         <td>${p.min_required}</td>
-                        <td><input type="number" class="order-qty-input" data-id="${p.id}" value="${suggestedQty > 0 ? suggestedQty : 5}" min="1"></td>
+                        <td><input type="number" class="order-qty-input" data-id="${p.id}" value="${p.qty}" min="1" onchange="updateQtyMemory(${p.id}, this.value)"></td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -244,16 +304,17 @@
             }
         }
 
+        function updateQtyMemory(id, value) {
+            const item = currentOrderList.find(i => i.id === id);
+            if (item) item.qty = parseInt(value);
+        }
+
         async function submitOrder() {
             const buyer = document.getElementById('order-buyer').value.trim();
-            if (!buyer) { alert("Παρακαλώ εισάγετε το όνομά σας στο πεδίο 'Όνομα ατόμου που παραγγέλνει'."); return; }
+            if (!buyer) { alert("Παρακαλώ εισάγετε το όνομά σας."); return; }
 
-            const items = [];
-            document.querySelectorAll('.order-qty-input').forEach(input => {
-                items.push({ product_id: parseInt(input.dataset.id), requested_qty: parseInt(input.value) });
-            });
-
-            if (items.length === 0) { alert("Δεν υπάρχουν προϊόντα για παραγγελία."); return; }
+            const items = currentOrderList.map(i => ({ product_id: i.id, requested_qty: i.qty }));
+            if (items.length === 0) { alert("Δεν υπάρχουν προϊόντα στη λίστα."); return; }
 
             try {
                 const res = await fetch(`${API_BASE}/orders`, {
@@ -261,11 +322,17 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ordered_by: buyer, items })
                 });
-                if (res.ok) { alert("Η παραγγελία καταγράφηκε με επιτυχία!"); document.getElementById('order-buyer').value = ''; loadInventory(); loadOrderSuggestions(); }
+                if (res.ok) { 
+                    alert("Η παραγγελία καταγράφηκε με επιτυχία!"); 
+                    document.getElementById('order-buyer').value = ''; 
+                    loadInventory(); 
+                    initOrderPage(); 
+                }
             } catch (err) { console.error(err); }
         }
 
-        // --- TAB 3 ΛΟΓΙΚΗ (ΠΑΡΑΛΑΒΕΣ) ---
+
+        // --- TAB 3: ΠΑΡΑΛΑΒΕΣ & ΔΙΑΓΡΑΦΕΣ ---
         async function loadPendingOrders() {
             const container = document.getElementById('pending-orders-container');
             container.innerHTML = '<p>Φόρτωση εκκρεμών παραγγελιών...</p>';
@@ -273,7 +340,6 @@
                 const res = await fetch(`${API_BASE}/orders/pending`);
                 const rawData = await res.json();
 
-                // Ομαδοποίηση των flat rows ανά ID παραγγελίας
                 const ordersMap = {};
                 rawData.forEach(row => {
                     if (!ordersMap[row.order_id]) {
@@ -284,33 +350,34 @@
 
                 container.innerHTML = '';
                 const ordersArray = Object.values(ordersMap);
-                if (ordersArray.length === 0) { container.innerHTML = '<p style="color:#718096;">Δεν υπάρχουν εκκρεμείς παραγγελίες προς παραλαβή.</p>'; return; }
+                if (ordersArray.length === 0) { container.innerHTML = '<p style="color:#718096;">Δεν υπάρχουν εκκρεμείς παραγγελίες.</p>'; return; }
 
                 ordersArray.forEach(o => {
                     const div = document.createElement('div');
                     div.className = 'order-card';
                     const dateFormatted = new Date(o.date).toLocaleString('el-GR');
                     div.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px;">
-                            <span><strong>Παραγγελία #${o.id}</strong> - Από: 👤 ${o.buyer}</span>
-                            <span style="font-size:13px; color:#718096;">📅 ${dateFormatted}</span>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px;">
+                            <span><strong>Παραγγελία #\${o.id}</strong> - Από: 👤 \${o.buyer}</span>
+                            <span style="font-size:13px; color:#718096;">📅 \${dateFormatted}</span>
+                            <button class="btn-delete" onclick="deleteOrder(\${o.id})">🗑️ Διαγραφή</button>
                         </div>
                         <table>
                             <thead><tr><th>Προϊόν</th><th>Προμηθευτής</th><th>Ζητήθηκαν</th><th style="width:140px;">Πραγματική Παραλαβή</th></tr></thead>
-                            <tbody id="receive-body-${o.id}"></tbody>
+                            <tbody id="receive-body-\${o.id}"></tbody>
                         </table>
-                        <button class="btn-primary" style="margin-top:10px; background-color:#38a169; padding:8px;" onclick="confirmReceipt(${o.id})">✔ Επιβεβαίωση Παραλαβής & Ενημέρωση Αποθήκης</button>
+                        <button class="btn-primary" style="margin-top:10px; background-color:#38a169; padding:8px;" onclick="confirmReceipt(\${o.id})">✔ Επιβεβαίωση Παραλαβής & Ενημέρωση Αποθήκης</button>
                     `;
                     container.appendChild(div);
 
-                    const tbody = document.getElementById(`receive-body-${o.id}`);
+                    const tbody = document.getElementById(`receive-body-\${o.id}`);
                     o.items.forEach(item => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
-                            <td>${item.product_name}</td>
-                            <td>${item.supplier}</td>
-                            <td><strong>${item.requested_qty}</strong></td>
-                            <td><input type="number" class="receive-qty-input-${o.id}" data-pid="${item.product_id}" value="${item.requested_qty}" min="0"></td>
+                            <td>\${item.product_name}</td>
+                            <td>\${item.supplier}</td>
+                            <td><strong>\${item.requested_qty}</strong></td>
+                            <td><input type="number" class="receive-qty-input-\${o.id}" data-pid="\${item.product_id}" value="\${item.requested_qty}" min="0"></td>
                         `;
                         tbody.appendChild(tr);
                     });
@@ -320,7 +387,7 @@
 
         async function confirmReceipt(orderId) {
             const items = [];
-            document.querySelectorAll(`.receive-qty-input-${orderId}`).forEach(input => {
+            document.querySelectorAll(`.receive-qty-input-\${orderId}`).forEach(input => {
                 items.push({ product_id: parseInt(input.dataset.pid), received_qty: parseInt(input.value) });
             });
 
@@ -330,7 +397,21 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ order_id: orderId, items })
                 });
-                if (res.ok) { alert("Η αποθήκη ενημερώθηκε επιτυχώς με τα νέα αποθέματα!"); loadInventory(); loadPendingOrders(); }
+                if (res.ok) { alert("Η αποθήκη ενημερώθηκε επιτυχώς!"); loadInventory(); loadPendingOrders(); }
+            } catch (err) { console.error(err); }
+        }
+
+        async function deleteOrder(orderId) {
+            if (!confirm(`Είστε σίγουροι ότι θέλετε να διαγράψετε την Παραγγελία #\${orderId} τελείως;`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/orders/\${orderId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    alert("Η παραγγελία διαγράφηκε επιτυχώς!");
+                    loadPendingOrders();
+                } else {
+                    alert("Σφάλμα κατά τη διαγραφή.");
+                }
             } catch (err) { console.error(err); }
         }
 
