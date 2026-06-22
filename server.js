@@ -10,11 +10,11 @@ app.use(express.json());
 // Σερβίρισμα των στατικών αρχείων από τον φάκελο public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Απευθείας σύνδεση με τα στοιχεία της βάσης σου (Hardcoded)
+// Σύνδεση μέσω του IPv4 Pooler (θύρα 6543) για να μην τρώει πόρτα από το Render
 const pool = new Pool({
-  host: 'db.mzdecptbtpgkzpbplwjp.supabase.co',
-  port: 5432,
-  user: 'postgres',
+  host: 'aws-0-eu-central-1.pooler.supabase.com',
+  port: 6543,
+  user: 'postgres.mzdecptbtpgkzpbplwjp', // Εδώ βάλαμε το tenant ID που ζητάει ο pooler
   password: 'hotel-management1',
   database: 'postgres',
   ssl: {
