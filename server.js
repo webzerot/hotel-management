@@ -10,11 +10,11 @@ app.use(express.json());
 // Σερβίρισμα των στατικών αρχείων από τον φάκελο public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Σύνδεση μέσω του IPv4 Pooler (θύρα 6543) για να μην τρώει πόρτα από το Render
+// Απευθείας σύνδεση στην IPv4 διεύθυνση του Supabase (Φρανκφούρτη) για παράκαμψη όλων των DNS/IPv6 bugs
 const pool = new Pool({
-  host: 'aws-0-eu-central-1.pooler.supabase.com',
+  host: '54.93.47.168', // Η επίσημη IPv4 διεύθυνση του aws-0-eu-central-1.pooler.supabase.com
   port: 6543,
-  user: 'postgres.mzdecptbtpgkzpbplwjp', // Εδώ βάλαμε το tenant ID που ζητάει ο pooler
+  user: 'postgres.mzdecptbtpgkzpbplwjp', // Το tenant ID σου
   password: 'hotel-management1',
   database: 'postgres',
   ssl: {
