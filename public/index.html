@@ -295,7 +295,67 @@
         async function submitOrder() { const buyer = document.getElementById('order-buyer').value.trim(); if (!buyer) { alert("Βάλτε όνομα."); return; } const finalItems = currentOrderList.filter(i => i.qty !== '' && i.qty > 0).map(i => ({ product_id: i.id, requested_qty: i.qty })); if (finalItems.length === 0) { alert("Συμπληρώστε ποσότητα."); return; } try { const res = await fetch(API_BASE + '/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ordered_by: buyer, items: finalItems }) }); if (res.ok) { alert("Η παραγγελία καταγράφηκε!"); document.getElementById('order-buyer').value = ''; loadInventory(); initOrderPage(); } } catch (err) { console.error(err); } }
         async function loadPendingOrders() { const container = document.getElementById('pending-orders-container'); container.innerHTML = '<p>Φόρτωση...</p>'; try { const res = await fetch(API_BASE + '/orders/pending'); const rawData = await res.json(); const ordersMap = {}; rawData.forEach(row => { if (!ordersMap[row.order_id]) ordersMap[row.order_id] = { id: row.order_id, buyer: row.ordered_by, date: row.created_at, items: [] }; ordersMap[row.order_id].items.push(row); }); container.innerHTML = ''; const ordersArray = Object.values(ordersMap); if (ordersArray.length === 0) { container.innerHTML = '<p style="color:#718096;">Καμία εκκρεμότητα.</p>'; return; } ordersArray.forEach(o => { const div = document.createElement('div'); div.className = 'order-card'; let innerRows = ''; o.items.forEach(item => { innerRows += '<tr><td>'+item.product_name+'</td><td>'+item.supplier+'</td><td><strong>'+item.requested_qty+'</strong></td><td><input type="number" class="receive-qty-input-'+o.id+'" data-pid="'+item.product_id+'" value="' + item.requested_qty + '" min="0"></td></tr>'; }); div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px; flex-wrap:wrap; gap:10px;"><span><strong>Παραγγελία #${o.id}</strong> - Από: 👤 ${o.buyer}</span><button class="btn-delete" onclick="deleteOrder(${o.id}, 'pending')">🗑️</button></div><div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Προμηθευτής</th><th>Ζητήθηκαν</th><th style="width:140px;">Πραγματική Παραλαβή</th></tr></thead><tbody>${innerRows}</tbody></table></div><div style="margin-top: 15px; max-width: 300px;"><label style="font-weight: bold; font-size:13px; display:block; margin-bottom:5px;">💶 Συνολικό Κόστος (€):</label><input type="text" id="receive-cost-${o.id}" placeholder="π.χ. 45.30"></div><button class="btn-primary" style="margin-top:10px; background-color:#38a169; padding:8px;" onclick="confirmReceipt(${o.id})">✔ Επιβεβαίωση Παραλαβής</button>`; container.appendChild(div); }); } catch (err) { console.error(err); } }
         async function confirmReceipt(orderId) { const items = []; document.querySelectorAll('.receive-qty-input-' + orderId).forEach(input => { items.push({ product_id: parseInt(input.dataset.pid), received_qty: parseInt(input.value) || 0 }); }); const total_cost = document.getElementById('receive-cost-' + orderId).value; try { const res = await fetch(API_BASE + '/orders/receive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId, items: items, total_cost: total_cost }) }); if (res.ok) { alert("Ενημερώθηκε!"); loadInventory(); loadPendingOrders(); } } catch (err) { console.error(err); } }
-        async function loadAllOrdersHistory() { const container = document.getElementById('all-orders-history-container'); container.innerHTML = '<p>Φόρτωση...</p>'; try { const res = await fetch(API_BASE + '/orders/all'); const rawData = await res.json(); const ordersMap = {}; rawData.forEach(row => { if (!ordersMap[row.order_id]) ordersMap[row.order_id] = { id: row.order_id, buyer: row.ordered_by, status: row.status, date: row.created_at, total_cost: row.total_cost, items: [] }; ordersMap[row.order_id].items.push(row); }); container.innerHTML = ''; const ordersArray = Object.values(ordersMap); if (ordersArray.length === 0) { container.innerHTML = '<p style="color:#718096;">Το ιστορικό είναι άδειο.</p>'; return; } ordersArray.forEach(o => { const div = document.createElement('div'); div.className = 'order-card'; let historyRows = ''; o.items.forEach(item => { historyRows += '<tr><td>'+item.product_name+'</td><td>'+item.supplier+'</td><td><strong>'+item.requested_qty+'</strong></td><td>' + (o.status === 'Εκκρεμεί' ? '-' : '<strong>'+item.received_qty+'</strong>') + '</td></tr>'; }); div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px; flex-wrap:wrap; gap:10px;"><span><strong>Παραγγελία #${o.id}</strong> - 👤 ${o.buyer} (${o.status === 'Εκκρεμεί' ? '<span class="pending-badge">Εκκρεμεί</span>' : '<span class="ok-badge">Παραλήφθηκε</span>'})</span><div style="display:flex; align-items:center; gap:8px;"><span style="font-weight:bold; background:#edf2f7; padding:4px 8px; border-radius:4px; font-size:13px; color:#2c5282;">💰 ${o.total_cost}</span><button class="btn-sm btn-edit" style="padding:4px 8px; font-size:11px;" onclick="updateHistoryCost(${o.id}, '${o.total_cost}')">✏️</button><button class="btn-delete" style="padding:4px 8px; font-size:11px;" onclick="deleteOrder(${o.id}, 'history')">🗑️</button></div></div><div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Προμηθευτής</th><th>Ζητήθηκαν</th><th>Ήρθαν</th></tr></thead><tbody>${historyRows}</tbody></table></div>`; container.appendChild(div); }); } catch (err) { console.error(err); } }
+        async function loadAllOrdersHistory() { 
+    const container = document.getElementById('all-orders-history-container'); 
+    container.innerHTML = '<p>Φόρτωση...</p>'; 
+    try { 
+        const res = await fetch(API_BASE + '/orders/all'); 
+        const rawData = await res.json(); 
+        const ordersMap = {}; 
+        rawData.forEach(row => { 
+            if (!ordersMap[row.order_id]) ordersMap[row.order_id] = { 
+                id: row.order_id, 
+                buyer: row.ordered_by, 
+                status: row.status, 
+                date: row.created_at, // Η ημερομηνία έρχεται από τη βάση
+                total_cost: row.total_cost, 
+                items: [] 
+            }; 
+            ordersMap[row.order_id].items.push(row); 
+        }); 
+        
+        container.innerHTML = ''; 
+        const ordersArray = Object.values(ordersMap); 
+        
+        if (ordersArray.length === 0) { 
+            container.innerHTML = '<p style="color:#718096;">Το ιστορικό είναι άδειο.</p>'; 
+            return; 
+        } 
+        
+        ordersArray.forEach(o => { 
+            const div = document.createElement('div'); 
+            div.className = 'order-card'; 
+            
+            // Μετατροπή ημερομηνίας σε αναγνώσιμη μορφή
+            const formattedDate = new Date(o.date).toLocaleString('el-GR');
+            
+            // Έλεγχος αν το κόστος έχει ήδη σύμβολο €
+            const displayCost = o.total_cost.includes('€') ? o.total_cost : o.total_cost + ' €';
+            
+            let historyRows = ''; 
+            o.items.forEach(item => { 
+                historyRows += '<tr><td>'+item.product_name+'</td><td>'+item.supplier+'</td><td><strong>'+item.requested_qty+'</strong></td><td>' + (o.status === 'Εκκρεμεί' ? '-' : '<strong>'+item.received_qty+'</strong>') + '</td></tr>'; 
+            }); 
+            
+            div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <strong>Παραγγελία #${o.id}</strong> - 👤 ${o.buyer} (${o.status === 'Εκκρεμεί' ? '<span class="pending-badge">Εκκρεμεί</span>' : '<span class="ok-badge">Παραλήφθηκε</span>'})
+                    <br><small style="color:#718096;">📅 ${formattedDate}</small>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-weight:bold; background:#edf2f7; padding:4px 8px; border-radius:4px; font-size:13px; color:#2c5282;">💰 ${displayCost}</span>
+                    <button class="btn-sm btn-edit" style="padding:4px 8px; font-size:11px;" onclick="updateHistoryCost(${o.id}, '${o.total_cost}')">✏️</button>
+                    <button class="btn-delete" style="padding:4px 8px; font-size:11px;" onclick="deleteOrder(${o.id}, 'history')">🗑️</button>
+                </div>
+            </div>
+            <div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Προμηθευτής</th><th>Ζητήθηκαν</th><th>Ήρθαν</th></tr></thead><tbody>${historyRows}</tbody></table></div>`; 
+            container.appendChild(div); 
+        }); 
+    } catch (err) { 
+        console.error(err); 
+    } 
+}
         async function updateHistoryCost(orderId, currentCost) { const newCost = prompt("Νέο κόστος:", currentCost === 'Άγνωστο κόστος' ? '' : currentCost); if (newCost === null) return; try { const res = await fetch(`${API_BASE}/orders/${orderId}/cost`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ total_cost: newCost }) }); if (res.ok) loadAllOrdersHistory(); } catch (err) { console.error(err); } }
         async function deleteOrder(orderId, source) { if (!confirm('Διαγραφή παραγγελίας #' + orderId + ';')) return; try { const res = await fetch(API_BASE + '/orders/' + orderId, { method: 'DELETE' }); if (res.ok) { if (source === 'pending') loadPendingOrders(); else loadAllOrdersHistory(); } } catch (err) { console.error(err); } }
         async function clearAllOrdersHistory() { if (!confirm("Καθαρισμός όλου του ιστορικού;")) return; try { const res = await fetch(API_BASE + '/orders/all/clear', { method: 'DELETE' }); if (res.ok) loadAllOrdersHistory(); } catch (err) { console.error(err); } }
