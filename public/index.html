@@ -1,166 +1,440 @@
-const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const { Pool } = require('pg');
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Breakfast Inventory</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f7fafc; color: #2d3748; }
+        header { background-color: #1a365d; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { margin: 0; font-size: 22px; }
+        .nav-tabs { display: flex; background: #2b6cb0; padding: 0 10px; }
+        .tab-btn { background: none; border: none; color: #e2e8f0; padding: 15px 20px; font-size: 16px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .tab-btn:hover { color: white; background: #2c5282; }
+        .tab-btn.active { color: white; background: #1a365d; border-bottom: 3px solid #63b3ed; }
+        .container { max-width: 1100px; margin: 25px auto; padding: 0 20px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
+        .card h2 { margin-top: 0; color: #1a365d; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 5px; box-sizing: border-box; font-size: 14px; }
+        button.btn-primary { background-color: #319795; color: white; border: none; padding: 12px; font-size: 15px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; }
+        button.btn-primary:hover { background-color: #2c7a7b; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #edf2f7; color: #4a5568; }
+        .alert-badge { background-color: #fed7d7; color: #9b2c2c; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .ok-badge { background-color: #c6f6d5; color: #22543d; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; border: none; }
+        .btn-edit { background-color: #4299e1; color: white; }
+        .btn-save { background-color: #48bb78; color: white; }
+        .btn-delete { background-color: #e53e3e; color: white; font-weight: bold; padding: 8px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 13px; }
+        .btn-delete:hover { background-color: #c53030; }
+        .order-card { border: 1px solid #cbd5e0; padding: 15px; border-radius: 6px; margin-bottom: 15px; background: #f7fafc; }
+        .manual-add-box { background: #ebf8ff; border: 1px solid #bee3f8; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end; }
+    </style>
+</head>
+<body>
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+    <header>
+        <h1>Hotel Breakfast Control Panel 🍳</h1>
+        <div style="font-weight: bold; background: #319795; padding: 5px 10px; border-radius: 4px;">Live</div>
+    </header>
 
-// Σύνδεση με Supabase (Region: Ireland)
-const pool = new Pool({
-  host: 'aws-0-eu-west-1.pooler.supabase.com',  
-  port: 5432,                                     
-  user: 'postgres.mzdecptbtpgkzpbplwjp',
-  password: 'hotel-management1',
-  database: 'postgres',
-  ssl: { rejectUnauthorized: false },
-  family: 4,
-  max: 3,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 15000,
-});
+    <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-inventory')">📋 Αποθήκη</button>
+        <button class="tab-btn" onclick="switchTab('tab-orders'); initOrderPage();">🛒 Νέα Παραγγελία</button>
+        <button class="tab-btn" onclick="switchTab('tab-receiving'); loadPendingOrders();">🚚 Παραλαβές</button>
+    </div>
 
-pool.connect((err, client, release) => {
-  if (err) {
-    console.error('❌ Αποτυχία σύνδεσης με Supabase:', err.message);
-  } else {
-    console.log('✅ Σύνδεση με Supabase επιτυχής!');
-    release();
-  }
-});
+    <div class="container">
+        
+        <!-- TAB 1: ΑΠΟΘΗΚΗ -->
+        <div id="tab-inventory" class="tab-content active">
+            <div class="card">
+                <h2>Προσθήκη Νέου Είδους</h2>
+                <form id="productForm">
+                    <div class="form-grid">
+                        <input type="text" id="p-name" placeholder="Όνομα (π.χ. Κέικ)" required>
+                        <input type="number" id="p-stock" placeholder="Απόθεμα" required min="0">
+                        <input type="number" id="p-min" placeholder="Όριο Ασφαλείας" required min="0">
+                        <input type="number" id="p-sug" placeholder="Προτειν. Ποσότητα" required min="1" value="5">
+                        <input type="text" id="p-supplier" placeholder="Προμηθευτής">
+                    </div>
+                    <button type="submit" class="btn-primary">Προσθήκη στην Αποθήκη +</button>
+                </form>
+            </div>
 
-// 1. GET: Όλα τα προϊόντα
-app.get('/api/products', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM products ORDER BY id ASC');
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Query error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-});
+            <div class="card">
+                <h2>Τρέχον Απόθεμα Αποθήκης</h2>
+                <div class="form-grid" style="margin-bottom: 20px;">
+                    <input type="text" id="filter-supplier" placeholder="Φίλτρο ανά Προμηθευτή..." oninput="renderInventoryTable()">
+                    <select id="filter-status" onchange="renderInventoryTable()">
+                        <option value="all">Όλα τα προϊόντα</option>
+                        <option value="low">Μόνο ελλείψεις (Κόκκινα)</option>
+                    </select>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Προϊόν</th>
+                            <th>Απόθεμα</th>
+                            <th>Όριο Ασφαλείας</th>
+                            <th>Προτειν. Ποσότητα</th>
+                            <th>Προμηθευτής</th>
+                            <th>Κατάσταση</th>
+                            <th>Ενέργειες</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-body"></tbody>
+                </table>
+            </div>
+        </div>
 
-// 2. POST: Προσθήκη προϊόντος
-app.post('/api/products', async (req, res) => {
-  let { name, stock, min_required, supplier, suggested_qty } = req.body;
-  if (!supplier || supplier.trim() === '') supplier = 'Άγνωστος';
-  const sugQty = suggested_qty ? parseInt(suggested_qty) : 5;
-  try {
-    const result = await pool.query(
-      'INSERT INTO products (name, stock, min_required, supplier, suggested_qty) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [name, stock, min_required, supplier, sugQty]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Insert error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-});
+        <!-- TAB 2: ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ -->
+        <div id="tab-orders" class="tab-content">
+            <div class="card">
+                <h2>Δημιουργία Παραγγελίας</h2>
+                <p style="color: #718096;">Συμπληρώστε την ποσότητα παραγγελίας. Δίπλα εμφανίζεται η προτεινόμενη ποσότητα που έχετε ορίσει.</p>
+                
+                <div class="manual-add-box">
+                    <div style="flex: 2;">
+                        <label style="font-weight:bold; font-size:13px; display:block; margin-bottom:5px;">Προσθήκη προϊόντος εκτός ελλειμμάτων:</label>
+                        <select id="manual-product-select">
+                            <option value="">-- Επιλέξτε Προϊόν --</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-primary" style="flex: 1; padding: 10px;" onclick="addManualProductToOrder()">➕ Προσθήκη στη Λίστα</button>
+                </div>
 
-// 3. PUT: Quick Edit Προϊόντος (Inline)
-app.put('/api/products/:id', async (req, res) => {
-  const { id } = req.params;
-  let { name, min_required, supplier, suggested_qty } = req.body;
-  if (!supplier || supplier.trim() === '') supplier = 'Άγνωστος';
-  const sugQty = suggested_qty ? parseInt(suggested_qty) : 5;
-  try {
-    const result = await pool.query(
-      'UPDATE products SET name = $1, min_required = $2, supplier = $3, suggested_qty = $4 WHERE id = $5 RETURNING *',
-      [name, min_required, supplier, sugQty, id]
-    );
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Update error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-});
+                <div style="margin-bottom: 20px; max-width: 300px;">
+                    <label style="font-weight: bold; display:block; margin-bottom: 5px;">Όνομα ατόμου που παραγγέλνει:</label>
+                    <input type="text" id="order-buyer" placeholder="π.χ. Γιώργος Παπαδόπουλος">
+                </div>
 
-// 4. POST: Δημιουργία Νέας Παραγγελίας
-app.post('/api/orders', async (req, res) => {
-  const { ordered_by, items } = req.body; 
-  try {
-    const orderRes = await pool.query(
-      'INSERT INTO orders (ordered_by) VALUES ($1) RETURNING *',
-      [ordered_by]
-    );
-    const orderId = orderRes.rows[0].id;
+                <div id="order-groups-container"></div>
+                <button type="button" class="btn-primary" style="margin-top: 15px; background-color: #2b6cb0;" onclick="submitOrder()">Αποστολή & Καταγραφή Παραγγελίας 🚀</button>
+            </div>
+        </div>
 
-    for (let item of items) {
-      await pool.query(
-        'INSERT INTO order_items (order_id, product_id, requested_qty) VALUES ($1, $2, $3)',
-        [orderId, item.product_id, item.requested_qty]
-      );
-    }
-    res.json({ success: true, orderId });
-  } catch (err) {
-    console.error('Order creation error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-});
+        <!-- TAB 3: ΠΑΡΑΛΑΒΕΣ & ΔΙΑΓΡΑΦΕΣ -->
+        <div id="tab-receiving" class="tab-content">
+            <div class="card">
+                <h2>Εκκρεμείς Παραγγελίες προς Παραλαβή / Διαγραφή</h2>
+                <p style="color: #718096;">Επιβεβαιώστε την παραλαβή ή διαγράψτε μια παραγγελία αν έγινε κατά λάθος.</p>
+                <div id="pending-orders-container"></div>
+            </div>
+        </div>
 
-// 5. GET: Λίστα Εκκρεμών Παραγγελιών
-app.get('/api/orders/pending', async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT o.id as order_id, o.ordered_by, o.created_at, 
-             oi.id as item_id, oi.product_id, oi.requested_qty, p.name as product_name, p.supplier
-      FROM orders o
-      JOIN order_items oi ON o.id = oi.order_id
-      JOIN products p ON oi.product_id = p.id
-      WHERE o.status = 'Εκκρεμεί'
-      ORDER BY o.id DESC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    console.error('Pending orders error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-});
+    </div>
 
-// 6. POST: Επιβεβαίωση Παραλαβής
-app.post('/api/orders/receive', async (req, res) => {
-  const { order_id, items } = req.body; 
-  try {
-    await pool.query("UPDATE orders SET status = 'Παραλήφθηκε' WHERE id = $1", [order_id]);
+    <script>
+        const API_BASE = 'https://hotel-management-vk0r.onrender.com/api';
+        let allProducts = [];
+        let currentOrderList = [];
 
-    for (let item of items) {
-      await pool.query(
-        'UPDATE order_items SET received_qty = $1 WHERE order_id = $2 AND product_id = $3',
-        [item.received_qty, order_id, item.product_id]
-      );
-      await pool.query(
-        'UPDATE products SET stock = stock + $1 WHERE id = $2',
-        [item.received_qty, item.product_id]
-      );
-      await pool.query(
-        'INSERT INTO stock_log (product_id, change_amount, reason) VALUES ($1, $2, $3)',
-        [item.product_id, item.received_qty, 'Παραλαβή Παραγγελίας']
-      );
-    }
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Receiving error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-});
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
 
-// 7. DELETE: Διαγραφή Κατά Λάθος Παραγγελίας
-app.delete('/api/orders/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    await pool.query('DELETE FROM orders WHERE id = $1', [id]);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Delete order error:', err.message);
-    res.status(500).json({ error: 'Database error', details: err.message });
-  }
-});
+        // --- TAB 1: ΑΠΟΘΗΚΗ ---
+        async function loadInventory() {
+            try {
+                const res = await fetch(`${API_BASE}/products`);
+                allProducts = await res.json();
+                renderInventoryTable();
+            } catch (err) { console.error("Error loading products:", err); }
+        }
 
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+        function renderInventoryTable() {
+            const tbody = document.getElementById('inventory-body');
+            const supplierFilter = document.getElementById('filter-supplier').value.toLowerCase();
+            const statusFilter = document.getElementById('filter-status').value;
+            tbody.innerHTML = '';
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+            allProducts.forEach(p => {
+                const isLow = p.stock <= p.min_required;
+                if (statusFilter === 'low' && !isLow) return;
+                if (supplierFilter && !p.supplier.toLowerCase().includes(supplierFilter)) return;
+
+                const statusBadge = isLow ? '<span class="alert-badge">Χαμηλό Απόθεμα</span>' : '<span class="ok-badge">OK</span>';
+                
+                const row = document.createElement('tr');
+                row.id = `row-${p.id}`;
+                row.innerHTML = `
+                    <td><span class="view-mode-${p.id}"><strong>${p.name}</strong></span><input type="text" class="edit-mode-${p.id}" value="${p.name}" style="display:none; max-width:150px;"></td>
+                    <td>${p.stock}</td>
+                    <td><span class="view-mode-${p.id}">${p.min_required}</span><input type="number" class="edit-mode-${p.id}" value="${p.min_required}" style="display:none; max-width:80px;"></td>
+                    <td><span class="view-mode-${p.id}">${p.suggested_qty || 5}</span><input type="number" class="edit-mode-${p.id}" value="${p.suggested_qty || 5}" style="display:none; max-width:80px;"></td>
+                    <td><span class="view-mode-${p.id}">${p.supplier}</span><input type="text" class="edit-mode-${p.id}" value="${p.supplier}" style="display:none; max-width:120px;"></td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <button class="btn-sm btn-edit view-mode-${p.id}" onclick="enableEdit(${p.id})">✏️ Edit</button>
+                        <button class="btn-sm btn-save edit-mode-${p.id}" onclick="saveEdit(${p.id})" style="display:none;">💾 Save</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function enableEdit(id) {
+            document.querySelectorAll(`.view-mode-${id}`).forEach(el => el.style.display = 'none');
+            document.querySelectorAll(`.edit-mode-${id}`).forEach(el => el.style.display = 'inline-block');
+        }
+
+        async function saveEdit(id) {
+            const inputs = document.querySelectorAll(`.edit-mode-${id}`);
+            const updatedData = { 
+                name: inputs[0].value, 
+                min_required: parseInt(inputs[1].value), 
+                suggested_qty: parseInt(inputs[2].value),
+                supplier: inputs[3].value 
+            };
+
+            try {
+                const res = await fetch(`${API_BASE}/products/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+                if (res.ok) { loadInventory(); }
+            } catch (err) { console.error(err); }
+        }
+
+        document.getElementById('productForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newProd = {
+                name: document.getElementById('p-name').value,
+                stock: parseInt(document.getElementById('p-stock').value),
+                min_required: parseInt(document.getElementById('p-min').value),
+                suggested_qty: parseInt(document.getElementById('p-sug').value),
+                supplier: document.getElementById('p-supplier').value
+            };
+            const res = await fetch(`${API_BASE}/products`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newProd)
+            });
+            if (res.ok) { document.getElementById('productForm').reset(); loadInventory(); }
+        });
+
+
+        // --- TAB 2: ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ ---
+        function initOrderPage() {
+            const select = document.getElementById('manual-product-select');
+            select.innerHTML = '<option value="">-- Επιλέξτε Προϊόν --</option>';
+            allProducts.forEach(p => {
+                select.innerHTML += `<option value="${p.id}">${p.name} (Απόθεμα: ${p.stock})</option>`;
+            });
+
+            currentOrderList = [];
+            allProducts.forEach(p => {
+                if (p.stock <= p.min_required) {
+                    currentOrderList.push({
+                        id: p.id,
+                        name: p.name,
+                        stock: p.stock,
+                        min_required: p.min_required,
+                        supplier: p.supplier || 'Άγνωστος',
+                        suggested_qty: p.suggested_qty || 5,
+                        qty: '' // Ξεκινάει τελείως κενό όπως ζήτησες!
+                    });
+                }
+            });
+            renderOrderGroups();
+        }
+
+        function addManualProductToOrder() {
+            const select = document.getElementById('manual-product-select');
+            const prodId = parseInt(select.value);
+            if (!prodId) return;
+
+            if (currentOrderList.some(item => item.id === prodId)) {
+                alert("Αυτό το προϊόν βρίσκεται ήδη στη λίστα της παραγγελίας!");
+                return;
+            }
+
+            const p = allProducts.find(item => item.id === prodId);
+            if (p) {
+                currentOrderList.push({
+                    id: p.id,
+                    name: p.name,
+                    stock: p.stock,
+                    min_required: p.min_required,
+                    supplier: p.supplier || 'Άγνωστος',
+                    suggested_qty: p.suggested_qty || 5,
+                    qty: '' // Κενό και για τη χειροκίνητη προσθήκη
+                });
+                renderOrderGroups();
+                select.value = '';
+            }
+        }
+
+        function renderOrderGroups() {
+            const container = document.getElementById('order-groups-container');
+            container.innerHTML = '';
+
+            const groups = {};
+            currentOrderList.forEach(item => {
+                if (!groups[item.supplier]) groups[item.supplier] = [];
+                groups[item.supplier].push(item);
+            });
+
+            if (currentOrderList.length === 0) {
+                container.innerHTML = '<p style="color:#718096;">Η λίστα παραγγελίας είναι άδεια.</p>';
+                return;
+            }
+
+            for (let sup in groups) {
+                const groupCard = document.createElement('div');
+                groupCard.className = 'card';
+                groupCard.innerHTML = `<h3 style="color:#2b6cb0; margin-top:0;">👨‍💼 Προμηθευτής: ${sup}</h3>`;
+                
+                const table = document.createElement('table');
+                table.innerHTML = `<thead><tr><th>Προϊόν</th><th>Τρέχον Απόθεμα</th><th>Όριο Ασφαλείας</th><th>Προτεινόμενη Ποσότητα</th><th style="width:150px;">Ποσότητα Παραγγελίας</th></tr></thead>`;
+                const tbody = document.createElement('tbody');
+
+                groups[sup].forEach(p => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><strong>${p.name}</strong></td>
+                        <td>${p.stock}</td>
+                        <td>${p.min_required}</td>
+                        <td><span style="color:#2b6cb0; font-weight:bold;">${p.suggested_qty}</span></td>
+                        <td><input type="number" class="order-qty-input" data-id="${p.id}" value="${p.qty}" placeholder="Γράψτε ποσότητα..." min="1" oninput="updateQtyMemory(${p.id}, this.value)"></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                table.appendChild(tbody);
+                groupCard.appendChild(table);
+                container.appendChild(groupCard);
+            }
+        }
+
+        function updateQtyMemory(id, value) {
+            const item = currentOrderList.find(i => i.id === id);
+            if (item) {
+                item.qty = value === '' ? '' : parseInt(value);
+            }
+        }
+
+        async function submitOrder() {
+            const buyer = document.getElementById('order-buyer').value.trim();
+            if (!buyer) { alert("Παρακαλώ εισάγετε το όνομά σας."); return; }
+
+            const finalItems = currentOrderList
+                .filter(i => i.qty !== '' && i.qty > 0)
+                .map(i => ({ product_id: i.id, requested_qty: i.qty }));
+
+            if (finalItems.length === 0) { 
+                alert("Παρακαλώ συμπληρώστε τουλάχιστον μία ποσότητα μεγαλύτερη από 0."); 
+                return; 
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/orders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ordered_by: buyer, items: finalItems })
+                });
+                if (res.ok) { 
+                    alert("Η παραγγελία καταγράφηκε με επιτυχία!"); 
+                    document.getElementById('order-buyer').value = ''; 
+                    loadInventory(); 
+                    initOrderPage(); 
+                }
+            } catch (err) { console.error(err); }
+        }
+
+
+        // --- TAB 3: ΠΑΡΑΛΑΒΕΣ & ΔΙΑΓΡΑΦΕΣ ---
+        async function loadPendingOrders() {
+            const container = document.getElementById('pending-orders-container');
+            container.innerHTML = '<p>Φόρτωση εκκρεμών παραγγελιών...</p>';
+            try {
+                const res = await fetch(`${API_BASE}/orders/pending`);
+                const rawData = await res.json();
+
+                const ordersMap = {};
+                rawData.forEach(row => {
+                    if (!ordersMap[row.order_id]) {
+                        ordersMap[row.order_id] = { id: row.order_id, buyer: row.ordered_by, date: row.created_at, items: [] };
+                    }
+                    ordersMap[row.order_id].items.push(row);
+                });
+
+                container.innerHTML = '';
+                const ordersArray = Object.values(ordersMap);
+                if (ordersArray.length === 0) { container.innerHTML = '<p style="color:#718096;">Δεν υπάρχουν εκκρεμείς παραγγελίες.</p>'; return; }
+
+                ordersArray.forEach(o => {
+                    const div = document.createElement('div');
+                    div.className = 'order-card';
+                    const dateFormatted = new Date(o.date).toLocaleString('el-GR');
+                    div.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px;">
+                            <span><strong>Παραγγελία #${o.id}</strong> - Από: 👤 ${o.buyer}</span>
+                            <span style="font-size:13px; color:#718096;">📅 ${dateFormatted}</span>
+                            <button class="btn-delete" onclick="deleteOrder(${o.id})">🗑️ Διαγραφή</button>
+                        </div>
+                        <table>
+                            <thead><tr><th>Προϊόν</th><th>Προμηθευτής</th><th>Ζητήθηκαν</th><th style="width:140px;">Πραγματική Παραλαβή</th></tr></thead>
+                            <tbody id="receive-body-${o.id}"></tbody>
+                        </table>
+                        <button class="btn-primary" style="margin-top:10px; background-color:#38a169; padding:8px;" onclick="confirmReceipt(${o.id})">✔ Επιβεβαίωση Παραλαβής & Ενημέρωση Αποθήκης</button>
+                    `;
+                    container.appendChild(div);
+
+                    const tbody = document.getElementById(`receive-body-${o.id}`);
+                    o.items.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${item.product_name}</td>
+                            <td>${item.supplier}</td>
+                            <td><strong>${item.requested_qty}</strong></td>
+                            <td><input type="number" class="receive-qty-input-${o.id}" data-pid="${item.product_id}" value="${item.requested_qty}" min="0"></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        async function confirmReceipt(orderId) {
+            const items = [];
+            document.querySelectorAll(`.receive-qty-input-${orderId}`).forEach(input => {
+                items.push({ product_id: parseInt(input.dataset.pid), received_qty: parseInt(input.value) });
+            });
+
+            try {
+                const res = await fetch(`${API_BASE}/orders/receive`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_id: orderId, items })
+                });
+                if (res.ok) { alert("Η αποθήκη ενημερώθηκε επιτυχώς!"); loadInventory(); loadPendingOrders(); }
+            } catch (err) { console.error(err); }
+        }
+
+        async function deleteOrder(orderId) {
+            if (!confirm(`Είστε σίγουροι ότι θέλετε να διαγράψετε την Παραγγελία #${orderId} τελείως;`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/orders/${orderId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    alert("Η παραγγελία διαγράφηκε επιτυχώς!");
+                    loadPendingOrders();
+                } else {
+                    alert("Σφάλμα κατά τη διαγραφή.");
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        loadInventory();
+    </script>
+</body>
+</html>
