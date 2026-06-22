@@ -7,8 +7,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Σερβίρισμα των στατικών αρχείων (HTML, CSS, JS) από τον κεντρικό φάκελο
-app.use(express.static(path.join(__dirname)));
+// Σερβίρισμα των στατικών αρχείων από τον φάκελο public
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Χειροκίνητη σύνδεση IPv4 με Supabase
 const pool = new Pool({
@@ -48,9 +48,9 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
-// Για οποιοδήποτε άλλο route, στείλε το index.html της σελίδας
+// Για οποιοδήποτε άλλο route, στείλε το index.html από τον φάκελο public
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 const PORT = process.env.PORT || 10000;
