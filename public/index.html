@@ -293,7 +293,59 @@
         function renderOrderGroups() { const container = document.getElementById('order-groups-container'); container.innerHTML = ''; const groups = {}; currentOrderList.forEach(item => { if (!groups[item.supplier]) groups[item.supplier] = []; groups[item.supplier].push(item); }); if (currentOrderList.length === 0) { container.innerHTML = '<p style="color:#718096;">Η λίστα είναι άδεια.</p>'; return; } for (let sup in groups) { const groupCard = document.createElement('div'); groupCard.className = 'card'; let innerTableRows = ''; groups[sup].forEach(p => { innerTableRows += `<tr><td><strong>${p.name}</strong></td><td>${p.stock}</td><td>${p.min_required}</td><td><span style="color:#2b6cb0; font-weight:bold;">${p.suggested_qty}</span></td><td><input type="number" class="order-qty-input" data-id="${p.id}" value="${p.qty}" placeholder="Ποσότητα..." min="1" oninput="updateQtyMemory(${p.id}, this.value)"></td><td style="text-align:right;"><button class="btn-sm" style="background-color:#e53e3e; color:white; font-weight:bold; padding:4px 8px; border-radius:4px;" onclick="removeProductFromCurrentOrder(${p.id})">❌</button></td></tr>`; }); groupCard.innerHTML = `<h3 style="color:#2b6cb0; margin-top:0;">👨‍💼 Προμηθευτής: ${sup}</h3><div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Απόθεμα</th><th>Όριο</th><th>Προτειν.</th><th style="width:150px;">Ποσότητα</th><th style="text-align:right;">Αφαίρεση</th></tr></thead><tbody>${innerTableRows}</tbody></table></div>`; container.appendChild(groupCard); } }
         function updateQtyMemory(id, value) { const item = currentOrderList.find(i => i.id === id); if (item) item.qty = value === '' ? '' : parseInt(value); }
         async function submitOrder() { const buyer = document.getElementById('order-buyer').value.trim(); if (!buyer) { alert("Βάλτε όνομα."); return; } const finalItems = currentOrderList.filter(i => i.qty !== '' && i.qty > 0).map(i => ({ product_id: i.id, requested_qty: i.qty })); if (finalItems.length === 0) { alert("Συμπληρώστε ποσότητα."); return; } try { const res = await fetch(API_BASE + '/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ordered_by: buyer, items: finalItems }) }); if (res.ok) { alert("Η παραγγελία καταγράφηκε!"); document.getElementById('order-buyer').value = ''; loadInventory(); initOrderPage(); } } catch (err) { console.error(err); } }
-        async function loadPendingOrders() { const container = document.getElementById('pending-orders-container'); container.innerHTML = '<p>Φόρτωση...</p>'; try { const res = await fetch(API_BASE + '/orders/pending'); const rawData = await res.json(); const ordersMap = {}; rawData.forEach(row => { if (!ordersMap[row.order_id]) ordersMap[row.order_id] = { id: row.order_id, buyer: row.ordered_by, date: row.created_at, items: [] }; ordersMap[row.order_id].items.push(row); }); container.innerHTML = ''; const ordersArray = Object.values(ordersMap); if (ordersArray.length === 0) { container.innerHTML = '<p style="color:#718096;">Καμία εκκρεμότητα.</p>'; return; } ordersArray.forEach(o => { const div = document.createElement('div'); div.className = 'order-card'; let innerRows = ''; o.items.forEach(item => { innerRows += '<tr><td>'+item.product_name+'</td><td>'+item.supplier+'</td><td><strong>'+item.requested_qty+'</strong></td><td><input type="number" class="receive-qty-input-'+o.id+'" data-pid="'+item.product_id+'" value="' + item.requested_qty + '" min="0"></td></tr>'; }); div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px; flex-wrap:wrap; gap:10px;"><span><strong>Παραγγελία #${o.id}</strong> - Από: 👤 ${o.buyer}</span><button class="btn-delete" onclick="deleteOrder(${o.id}, 'pending')">🗑️</button></div><div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Προμηθευτής</th><th>Ζητήθηκαν</th><th style="width:140px;">Πραγματική Παραλαβή</th></tr></thead><tbody>${innerRows}</tbody></table></div><div style="margin-top: 15px; max-width: 300px;"><label style="font-weight: bold; font-size:13px; display:block; margin-bottom:5px;">💶 Συνολικό Κόστος (€):</label><input type="text" id="receive-cost-${o.id}" placeholder="π.χ. 45.30"></div><button class="btn-primary" style="margin-top:10px; background-color:#38a169; padding:8px;" onclick="confirmReceipt(${o.id})">✔ Επιβεβαίωση Παραλαβής</button>`; container.appendChild(div); }); } catch (err) { console.error(err); } }
+        async function loadPendingOrders() { 
+    const container = document.getElementById('pending-orders-container'); 
+    container.innerHTML = '<p>Φόρτωση...</p>'; 
+    try { 
+        const res = await fetch(API_BASE + '/orders/pending'); 
+        const rawData = await res.json(); 
+        const ordersMap = {}; 
+        
+        rawData.forEach(row => { 
+            if (!ordersMap[row.order_id]) {
+                ordersMap[row.order_id] = { 
+                    id: row.order_id, 
+                    buyer: row.ordered_by, 
+                    date: row.created_at, // Εδώ έχουμε την ημερομηνία
+                    items: [] 
+                }; 
+            }
+            ordersMap[row.order_id].items.push(row); 
+        }); 
+        
+        container.innerHTML = ''; 
+        const ordersArray = Object.values(ordersMap); 
+        
+        if (ordersArray.length === 0) { 
+            container.innerHTML = '<p style="color:#718096;">Καμία εκκρεμότητα.</p>'; 
+            return; 
+        } 
+        
+        ordersArray.forEach(o => { 
+            const div = document.createElement('div'); 
+            div.className = 'order-card'; 
+            const createdDate = new Date(o.date).toLocaleString('el-GR'); // Μετατροπή ημερομηνίας
+            
+            let innerRows = ''; 
+            o.items.forEach(item => { 
+                innerRows += '<tr><td>'+item.product_name+'</td><td>'+item.supplier+'</td><td><strong>'+item.requested_qty+'</strong></td><td><input type="number" class="receive-qty-input-'+o.id+'" data-pid="'+item.product_id+'" value="' + item.requested_qty + '" min="0"></td></tr>'; 
+            }); 
+            
+            div.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px; flex-wrap:wrap; gap:10px;">
+                <div>
+                    <strong>Παραγγελία #${o.id}</strong> - Από: 👤 ${o.buyer}
+                    <br><small style="color:#718096;">🚀 Παραγγέλθηκε: ${createdDate}</small>
+                </div>
+                <button class="btn-delete" onclick="deleteOrder(${o.id}, 'pending')">🗑️</button>
+            </div>
+            <div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Προμηθευτής</th><th>Ζητήθηκαν</th><th style="width:140px;">Πραγματική Παραλαβή</th></tr></thead><tbody>${innerRows}</tbody></table></div>
+            <div style="margin-top: 15px; max-width: 300px;"><label style="font-weight: bold; font-size:13px; display:block; margin-bottom:5px;">💶 Συνολικό Κόστος (€):</label><input type="text" id="receive-cost-${o.id}" placeholder="π.χ. 45.30"></div>
+            <button class="btn-primary" style="margin-top:10px; background-color:#38a169; padding:8px;" onclick="confirmReceipt(${o.id})">✔ Επιβεβαίωση Παραλαβής</button>`; 
+            container.appendChild(div); 
+        }); 
+    } catch (err) { console.error(err); } 
+}
         async function confirmReceipt(orderId) { const items = []; document.querySelectorAll('.receive-qty-input-' + orderId).forEach(input => { items.push({ product_id: parseInt(input.dataset.pid), received_qty: parseInt(input.value) || 0 }); }); const total_cost = document.getElementById('receive-cost-' + orderId).value; try { const res = await fetch(API_BASE + '/orders/receive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order_id: orderId, items: items, total_cost: total_cost }) }); if (res.ok) { alert("Ενημερώθηκε!"); loadInventory(); loadPendingOrders(); } } catch (err) { console.error(err); } }
        async function loadAllOrdersHistory() { 
     const container = document.getElementById('all-orders-history-container'); 
