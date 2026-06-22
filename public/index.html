@@ -34,6 +34,15 @@
         .order-card { border: 1px solid #cbd5e0; padding: 15px; border-radius: 6px; margin-bottom: 15px; background: #f7fafc; }
         .manual-add-box { background: #ebf8ff; border: 1px solid #bee3f8; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end; }
         .danger-zone { margin-top: 50px; border-top: 2px dashed #e53e3e; padding-top: 20px; text-align: center; }
+        
+        /* ANALYTICS STYLES */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-box { background: white; padding: 20px; border-radius: 8px; border-left: 5px solid #2b6cb0; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
+        .stat-box h3 { margin: 0 0 10px 0; font-size: 15px; color: #718096; text-transform: uppercase; }
+        .stat-box .num { font-size: 32px; font-weight: bold; color: #1a365d; }
+        .chart-bar-container { background: #edf2f7; border-radius: 5px; height: 24px; width: 100%; overflow: hidden; margin-top: 5px; position: relative; }
+        .chart-bar { background: #319795; height: 100%; border-radius: 5px; transition: width 0.5s ease; }
+        .chart-label { position: absolute; left: 10px; top: 2px; font-size: 13px; font-weight: bold; color: #1a365d; }
     </style>
 </head>
 <body>
@@ -47,6 +56,7 @@
         <button class="tab-btn active" onclick="switchTab('tab-inventory')">📋 Αποθήκη</button>
         <button class="tab-btn" onclick="switchTab('tab-orders'); initOrderPage();">🛒 Νέα Παραγγελία</button>
         <button class="tab-btn" onclick="switchTab('tab-receiving'); loadPendingOrders();">🚚 Παραλαβές</button>
+        <button class="tab-btn" onclick="switchTab('tab-analytics'); loadAnalytics();">📊 Analytics</button>
     </div>
 
     <div class="container">
@@ -125,6 +135,44 @@
             </div>
         </div>
 
+        <div id="tab-analytics" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-box" style="border-left-color: #2b6cb0;">
+                    <h3>Σύνολο Ειδών</h3>
+                    <div class="num" id="stat-total-items">0</div>
+                </div>
+                <div class="stat-box" style="border-left-color: #e53e3e;">
+                    <h3>Προϊόντα σε Έλλειψη</h3>
+                    <div class="num" id="stat-low-items" style="color: #e53e3e;">0</div>
+                </div>
+                <div class="stat-box" style="border-left-color: #3182ce;">
+                    <h3>Εκκρεμείς Παραγγελίες</h3>
+                    <div class="num" id="stat-pending-orders" style="color: #3182ce;">0</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>Συνολικές Παραλαβές ανά Προϊόν (Όγκος Κίνησης)</h2>
+                <p style="color: #718096; margin-bottom: 20px;">Εμφανίζει το άθροισμα των ποσοτήτων που έχουν παραληφθεί ιστορικά ανά προϊόν.</p>
+                <div id="analytics-chart-container"></div>
+            </div>
+
+            <div class="card">
+                <h2>Πρόσφατο Ιστορικό Κινήσεων (Live Logs)</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ημερομηνία/Ώρα</th>
+                            <th>Προϊόν</th>
+                            <th>Ποσότητα Κίνησης</th>
+                            <th>Αιτιολογία</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analytics-logs-body"></tbody>
+                </table>
+            </div>
+        </div>
+
         <div class="danger-zone">
             <button class="btn-delete" style="background-color: #e53e3e; font-size: 14px; padding: 10px 20px;" onclick="resetEntireDatabase()">⚠️ Ολικό Reset Αποθήκης (Διαγραφή Όλων)</button>
         </div>
@@ -140,7 +188,7 @@
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-            if(event && event.target.classList) event.target.classList.add('active');
+            if(event && event.target && event.target.classList) event.target.classList.add('active');
         }
 
         // --- TAB 1: ΑΠΟΘΗΚΗ ---
@@ -367,7 +415,7 @@
         }
 
 
-        // --- TAB 3: ΠΑΡΑΛΑΒΕΣ & ΔΙΑΓΡΑΦΕΣ ---
+        // --- TAB 3: ΠΑΡΑΛΑΒΕΣ ---
         async function loadPendingOrders() {
             const container = document.getElementById('pending-orders-container');
             container.innerHTML = '<p>Φόρτωση εκκρεμών παραγγελιών...</p>';
@@ -438,35 +486,97 @@
 
         async function deleteOrder(orderId) {
             if (!confirm(`Είστε σίγουροι ότι θέλετε να διαγράψετε την Παραγγελία #${orderId} τελείως;`)) return;
-
             try {
                 const res = await fetch(`${API_BASE}/orders/${orderId}`, { method: 'DELETE' });
-                if (res.ok) {
-                    alert("Η παραγγελία διαγράφηκε επιτυχώς!");
-                    loadPendingOrders();
-                } else {
-                    alert("Σφάλμα κατά τη διαγραφή.");
+                if (res.ok) { alert("Η παραγγελία διαγράφηκε επιτυχώς!"); loadPendingOrders(); }
+            } catch (err) { console.error(err); }
+        }
+
+
+        // --- TAB 4: ANALYTICS & STATS (ΝΕΟ) ---
+        async function loadAnalytics() {
+            // 1. Φόρτωση widgets από τα allProducts που έχουμε ήδη στη μνήμη
+            document.getElementById('stat-total-items').innerText = allProducts.length;
+            const lowCount = allProducts.filter(p => p.stock <= p.min_required).length;
+            document.getElementById('stat-low-items').innerText = lowCount;
+
+            try {
+                // Φόρτωση εκκρεμών παραγγελιών για το 3ο widget
+                const resOrders = await fetch(`${API_BASE}/orders/pending`);
+                const pendingData = await resOrders.json();
+                const uniqueOrders = new Set(pendingData.map(r => r.order_id)).size;
+                document.getElementById('stat-pending-orders').innerText = uniqueOrders;
+
+                // Φόρτωση των live logs
+                const resLogs = await fetch(`${API_BASE}/analytics/logs`);
+                const logsData = await resLogs.json();
+                
+                // Render Πίνακα Logs
+                const tbody = document.getElementById('analytics-logs-body');
+                tbody.innerHTML = '';
+                logsData.forEach(log => {
+                    const dateFormatted = new Date(log.changed_at).toLocaleString('el-GR');
+                    const qtyStyle = log.reason === 'Παραλαβή Παραγγελίας' ? 'color:#2f855a; font-weight:bold;' : 'color:#718096;';
+                    const qtyPrefix = log.reason === 'Παραλαβή Παραγγελίας' ? '+' : '';
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${dateFormatted}</td>
+                            <td><strong>${log.product_name}</strong></td>
+                            <td style="${qtyStyle}">${qtyPrefix}${log.change_amount}</td>
+                            <td>${log.reason}</td>
+                        </tr>
+                    `;
+                });
+
+                // Υπολογισμός και Render του Visual Chart (Μπάρες)
+                // Μαζεύουμε το άθροισμα των παραλαβών ανά προϊόν
+                const volumes = {};
+                logsData.forEach(log => {
+                    if (log.reason === 'Παραλαβή Παραγγελίας' || log.reason === 'Αρχική Εισαγωγή') {
+                        volumes[log.product_name] = (volumes[log.product_name] || 0) + log.change_amount;
+                    }
+                });
+
+                const chartContainer = document.getElementById('analytics-chart-container');
+                chartContainer.innerHTML = '';
+                
+                const entries = Object.entries(volumes);
+                if(entries.length === 0) {
+                    chartContainer.innerHTML = '<p style="color:#718096;">Δεν υπάρχουν ακόμα δεδομένα κίνησης για γράφημα.</p>';
+                    return;
                 }
+
+                // Βρίσκουμε το μέγιστο για να βγάλουμε σωστά ποσοστά πλάτους (%)
+                const maxVal = Math.max(...entries.map(e => e[1]));
+
+                entries.forEach(([name, val]) => {
+                    const widthPct = maxVal > 0 ? (val / maxVal) * 100 : 0;
+                    chartContainer.innerHTML += `
+                        <div style="margin-bottom: 15px;">
+                            <span style="font-size: 14px; font-weight: bold;">${name}</span>
+                            <div class="chart-bar-container">
+                                <div class="chart-bar" style="width: ${widthPct}%"></div>
+                                <div class="chart-label">${val} τεμ.</div>
+                            </div>
+                        </div>
+                    `;
+                });
+
             } catch (err) { console.error(err); }
         }
 
         // --- ΟΛΙΚΟ RESET ΒΑΣΗΣ ---
         async function resetEntireDatabase() {
-            const firstConfirm = confirm("⚠️ ΠΡΟΣΟΧΗ! Αυτή η ενέργεια θα ΔΙΑΓΡΑΨΕΙ ΟΡΙΣΤΙΚΑ όλα τα προϊόντα, όλες τις παραγγελίες και όλο το ιστορικό από τη βάση δεδομένων. Είστε σίγουροι;");
-            if (!firstConfirm) return;
-
-            const secondConfirm = confirm("❌ ΣΙΓΟΥΡΑ; Δεν θα μπορείτε να επαναφέρετε τα δεδομένα μετά από αυτό!");
-            if (!secondConfirm) return;
+            if (!confirm("⚠️ ΠΡΟΣΟΧΗ! Αυτή η ενέργεια θα ΔΙΑΓΡΑΨΕΙ ΟΡΙΣΤΙΚΑ όλα τα προϊόντα, όλες τις παραγγελίες και όλο το ιστορικό. Είστε σίγουροι;")) return;
+            if (!confirm("❌ ΣΙΓΟΥΡΑ; Δεν υπάρχει επιστροφή!")) return;
 
             try {
                 const res = await fetch(`${API_BASE}/reset-database`, { method: 'POST' });
                 if (res.ok) {
-                    alert("Η βάση δεδομένων καθαρίστηκε επιτυχώς! Όλα είναι πλέον κενά.");
+                    alert("Η βάση δεδομένων καθαρίστηκε επιτυχώς!");
                     loadInventory();
-                    // Αν είμαστε στην καρτέλα παραγγελιών, ανανέωσέ την
-                    if(document.getElementById('tab-orders').classList.contains('active')) { initOrderPage(); }
-                } else {
-                    alert("Σφάλμα κατά το reset της βάσης.");
+                    switchTab('tab-inventory');
                 }
             } catch (err) { console.error(err); }
         }
