@@ -54,7 +54,7 @@
 
         @media print {
             body { background: white; color: black; }
-            header, .nav-tabs, #productForm, .manual-add-box, form, button, .btn-sm, .btn-delete, .btn-clean, .btn-pdf, .danger-zone, .form-grid, #analytics-time-range { display: none !important; }
+            header, .nav-tabs, #productForm, .manual-add-box, form, button, .btn-sm, .btn-delete, .btn-clean, .btn-pdf, .danger-zone, .form-grid, #analytics-time-range, .action-buttons-order { display: none !important; }
             .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
             .card, .supplier-block, .order-card { box-shadow: none !important; border: none !important; padding: 0 !important; margin-bottom: 30px !important; page-break-inside: avoid; }
             .tab-content { display: none !important; }
@@ -150,12 +150,20 @@
                     <h2 style="margin:0;">Δημιουργία Παραγγελίας</h2>
                     <button type="button" class="btn-pdf" onclick="window.print()">📄 Αποθήκευση Λίστας (PDF)</button>
                 </div>
+                
                 <div class="manual-add-box">
                     <div style="flex: 2;">
                         <select id="manual-product-select"><option value="">-- Επιλέξτε Προϊόν --</option></select>
                     </div>
                     <button type="button" class="btn-primary" style="flex: 1; padding: 10px;" onclick="addManualProductToOrder()">➕ Προσθήκη στη Λίστα</button>
                 </div>
+
+                <!-- ΝΕΑ ΚΟΥΜΠΙΑ ΜΑΖΙΚΗΣ ΔΙΑΧΕΙΡΙΣΗΣ ΛΙΣΤΑΣ -->
+                <div class="action-buttons-order" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                    <button type="button" class="btn-primary" style="background-color: #e53e3e; max-width: 180px; padding: 8px 12px; font-size: 13px;" onclick="clearEntireCurrentOrder()">🧹 Αφαίρεση Όλων</button>
+                    <button type="button" class="btn-primary" style="background-color: #2b6cb0; max-width: 250px; padding: 8px 12px; font-size: 13px;" onclick="addAllLowStockProductsAutomatically()">🚨 Αυτόματη Προσθήκη Ελλειμμάτων</button>
+                </div>
+
                 <div style="margin-bottom: 20px; max-width: 300px;">
                     <input type="text" id="order-buyer" placeholder="Όνομα ατόμου που παραγγέλνει">
                 </div>
@@ -186,7 +194,7 @@
             </div>
         </div>
 
-        <!-- TAB 6: ΣΤΑΤΙΣΤΙΚΑ (ΜΕΤΟΝΟΜΑΣΙΑ + LIVE ΥΠΟΛΟΓΙΣΜΟΣ ΕΞΟΔΩΝ) -->
+        <!-- TAB 6: ΣΤΑΤΙΣΤΙΚΑ -->
         <div id="tab-analytics" class="tab-content">
             <div class="card" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <select id="analytics-time-range" style="max-width: 200px;" onchange="loadAnalytics()">
@@ -201,7 +209,6 @@
                 <div class="stat-box" style="border-left-color: #2b6cb0;"><h3>Σύνολο Ειδών</h3><div class="num" id="stat-total-items">0</div></div>
                 <div class="stat-box" style="border-left-color: #e53e3e;"><h3>Προϊόντα σε Έλλειψη</h3><div class="num" id="stat-low-items" style="color: #e53e3e;">0</div></div>
                 <div class="stat-box" style="border-left-color: #3182ce;"><h3>Εκκρεμείς Παραγγελίες</h3><div class="num" id="stat-pending-orders" style="color: #3182ce;">0</div></div>
-                <!-- ΝΕΟ WIDGET ΣΥΝΟΛΙΚΩΝ ΕΞΟΔΩΝ -->
                 <div class="stat-box" style="border-left-color: #38a169;"><h3>Συνολικά Έξοδα</h3><div class="num" id="stat-total-expenses" style="color: #38a169;">0.00 €</div></div>
             </div>
             <div class="card"><h2>Συνολικές Παραλαβές ανά Προϊόν</h2><div id="analytics-chart-container"></div></div>
@@ -434,29 +441,33 @@
             const select = document.getElementById('manual-product-select');
             select.innerHTML = '<option value="">-- Επιλέξτε Προϊόν --</option>';
             allProducts.forEach(p => { if (!p.name.startsWith('Καρτέλα ')) select.innerHTML += '<option value="' + p.id + '">' + p.name + ' (Απόθεμα: ' + p.stock + ')</option>'; });
-            currentOrderList = [];
+            
+            // Φόρτωση αυτόματων ελλειμμάτων κατά το άνοιγμα της σελίδας
+            addAllLowStockProductsAutomatically();
+        }
+
+        // 🚨 1. ΣΥΝΑΡΤΗΣΗ ΑΥΤΟΜΑΤΗΣ ΠΡΟΣΘΗΚΗΣ ΕΛΛΕΙΜΜΑΤΩΝ
+        function addAllLowStockProductsAutomatically() {
             allProducts.forEach(p => {
                 if (p.stock <= p.min_required && !p.name.startsWith('Καρτέλα ')) {
-                    currentOrderList.push({ id: p.id, name: p.name, stock: p.stock, min_required: p.min_required, supplier: p.supplier || 'Άγνωστος', suggested_qty: p.suggested_qty || 5, qty: '' });
+                    // Έλεγχος αν υπάρχει ήδη στη λίστα για να μην μπει διπλό
+                    if (!currentOrderList.some(item => item.id === p.id)) {
+                        currentOrderList.push({ id: p.id, name: p.name, stock: p.stock, min_required: p.min_required, supplier: p.supplier || 'Άγνωστος', suggested_qty: p.suggested_qty || 5, qty: '' });
+                    }
                 }
             });
             renderOrderGroups();
         }
 
-        function addManualProductToOrder() {
-            const select = document.getElementById('manual-product-select');
-            const prodId = parseInt(select.value);
-            if (!prodId) return;
-            if (currentOrderList.some(item => item.id === prodId)) { alert("Υπάρχει ήδη στη λίστα!"); return; }
-            const p = allProducts.find(item => item.id === prodId);
-            if (p) {
-                currentOrderList.push({ id: p.id, name: p.name, stock: p.stock, min_required: p.min_required, supplier: p.supplier || 'Άγνωστος', suggested_qty: p.suggested_qty || 5, qty: '' });
+        // 🧹 2. ΣΥΝΑΡΤΗΣΗ ΟΛΙΚΗΣ ΑΦΑΙΡΕΣΗΣ ΠΡΟΪΟΝΤΩΝ
+        function clearEntireCurrentOrder() {
+            if (currentOrderList.length === 0) return;
+            if (confirm("Θέλετε να αδειάσετε όλα τα προϊόντα από την τρέχουσα παραγγελία;")) {
+                currentOrderList = [];
                 renderOrderGroups();
-                select.value = '';
             }
         }
 
-        // ΑΝΑΒΑΘΜΙΣΗ: ΑΦΑΙΡΕΣΗ ΕΝΟΣ ΠΡΟΪΟΝΤΟΣ ΑΠΟ ΤΗΝ ΤΡΕΧΟΥΣΑ ΛΙΣΤΑ ΠΑΡΑΓΓΕΛΙΑΣ
         function removeProductFromCurrentOrder(id) {
             currentOrderList = currentOrderList.filter(item => item.id !== id);
             renderOrderGroups();
@@ -483,7 +494,6 @@
                         <td>${p.min_required}</td>
                         <td><span style="color:#2b6cb0; font-weight:bold;">${p.suggested_qty}</span></td>
                         <td><input type="number" class="order-qty-input" data-id="${p.id}" value="${p.qty}" placeholder="Ποσότητα..." min="1" oninput="updateQtyMemory(${p.id}, this.value)"></td>
-                        <!-- ΚΟΥΜΠΙ ΑΦΑΙΡΕΣΗΣ (❌) -->
                         <td style="text-align:right;"><button class="btn-sm" style="background-color:#e53e3e; color:white; font-weight:bold; padding:4px 8px; border-radius:4px;" onclick="removeProductFromCurrentOrder(${p.id})">❌</button></td>
                     </tr>`;
                 });
@@ -646,7 +656,7 @@
             } catch (err) { console.error(err); }
         }
 
-        // --- TAB 6: ΣΤΑΤΙΣΤΙΚΑ (ΜΕ LIVE ΥΠΟΛΟΓΙΣΜΟ ΕΞΟΔΩΝ ΒΑΣΕΙ ΦΙΛΤΡΟΥ) ---
+        // --- TAB 6: ΣΤΑΤΙΣΤΙΚΑ ---
         async function loadAnalytics() {
             const range = document.getElementById('analytics-time-range').value;
             try {
@@ -656,7 +666,6 @@
                 document.getElementById('stat-low-items').innerText = allProducts.filter(p => p.stock <= p.min_required && !p.name.startsWith('Καρτέλα ')).length;
                 document.getElementById('stat-pending-orders').innerText = new Set(pendingData.map(r => r.order_id)).size;
 
-                // Τραβάμε τα logs για το επιλεγμένο διάστημα
                 const resLogs = await fetch(API_BASE + '/analytics/logs?range=' + range);
                 const logsData = await resLogs.json();
                 const tbody = document.getElementById('analytics-logs-body');
@@ -685,11 +694,9 @@
                     });
                 }
 
-                // 💶 ΥΠΟΛΟΓΙΣΜΟΣ LIVE ΕΞΟΔΩΝ ΑΠΟ ΤΟ ΙΣΤΟΡΙΚΟ ΠΑΡΑΓΓΕΛΙΩΝ (ΒΑΣΕΙ ΦΙΛΤΡΟΥ ΧΡΟΝΟΥ)
                 const resAllOrders = await fetch(API_BASE + '/orders/all');
                 const allOrdersData = await resAllOrders.json();
                 
-                // Ομαδοποίηση παραγγελιών για αποφυγή διπλοεγγραφών (λόγω των join στα items)
                 const uniqueOrdersMap = {};
                 allOrdersData.forEach(row => {
                     if (row.status === 'Παραλήφθηκε') {
@@ -710,16 +717,12 @@
                     else if (range === 'year' && diffDays > 365) isInRange = false;
 
                     if (isInRange) {
-                        // Καθαρισμός του string του κόστους για να πάρουμε καθαρό αριθμό (π.χ. "45.30€" -> 45.30)
                         const cleanCost = parseFloat(order.total_cost.replace(/[^0-9.]/g, ''));
-                        if (!isNaN(cleanCost)) {
-                            totalExpenses += cleanCost;
-                        }
+                        if (!isNaN(cleanCost)) { totalExpenses += cleanCost; }
                     }
                 });
 
                 document.getElementById('stat-total-expenses').innerText = totalExpenses.toFixed(2) + ' €';
-
             } catch (err) { console.error(err); }
         }
 
