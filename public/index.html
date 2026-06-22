@@ -92,7 +92,7 @@
         <div id="tab-orders" class="tab-content">
             <div class="card">
                 <h2>Δημιουργία Παραγγελίας</h2>
-                <p style="color: #718096;">Τα προϊόντα σε έλλειψη έχουν προστεθεί αυτόματα. Μπορείτε να προσθέσετε χειροκίνητα και επιπλέον προϊόντα.</p>
+                <p style="color: #718096;">Τα προϊόντα σε έλλειψη έχουν προσταθεί αυτόματα. Μπορείτε να αλλάξετε τις ποσότητες (ή να βάλετε 0/κενό) και να προσθέσετε χειροκίνητα επιπλέον προϊόντα.</p>
                 
                 <div class="manual-add-box">
                     <div style="flex: 2;">
@@ -127,7 +127,7 @@
     <script>
         const API_BASE = 'https://hotel-management-vk0r.onrender.com/api';
         let allProducts = [];
-        let currentOrderList = []; // Κρατάει τα προϊόντα που είναι στη λίστα παραγγελίας αυτή τη στιγμή
+        let currentOrderList = [];
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -213,14 +213,12 @@
 
         // --- TAB 2: ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ ---
         function initOrderPage() {
-            // Γέμισμα του Dropdown χειροκίνητης προσθήκης
             const select = document.getElementById('manual-product-select');
             select.innerHTML = '<option value="">-- Επιλέξτε Προϊόν --</option>';
             allProducts.forEach(p => {
                 select.innerHTML += `<option value="${p.id}">${p.name} (Απόθεμα: ${p.stock}, Προμ: ${p.supplier})</option>`;
             });
 
-            // Φόρτωση αυτόματων ελλειμμάτων
             currentOrderList = [];
             allProducts.forEach(p => {
                 if (p.stock <= p.min_required) {
@@ -231,7 +229,7 @@
                         stock: p.stock,
                         min_required: p.min_required,
                         supplier: p.supplier || 'Άγνωστος',
-                        qty: suggestedQty > 0 ? suggestedQty : 5
+                        qty: suggestedQty > 0 ? suggestedQty : 0 // Αν ο υπολογισμός βγει 0, μπαίνει 0
                     });
                 }
             });
@@ -243,7 +241,6 @@
             const prodId = parseInt(select.value);
             if (!prodId) return;
 
-            // Έλεγχος αν υπάρχει ήδη στη λίστα
             if (currentOrderList.some(item => item.id === prodId)) {
                 alert("Αυτό το προϊόν βρίσκεται ήδη στη λίστα της παραγγελίας!");
                 return;
@@ -257,7 +254,7 @@
                     stock: p.stock,
                     min_required: p.min_required,
                     supplier: p.supplier || 'Άγνωστος',
-                    qty: 5 // Default αρχική ποσότητα για χειροκίνητη προσθήκη
+                    qty: 0 // Default 0 για τις χειροκίνητες προσθήκες, ώστε να βάζεις εσύ ό,τι θες
                 });
                 renderOrderGroups();
                 select.value = '';
@@ -290,11 +287,12 @@
 
                 groups[sup].forEach(p => {
                     const row = document.createElement('tr');
+                    // Αν η τιμή είναι 0, το input εμφανίζει "0", αλλά μπορείς να το σβήσεις τελείως ή να γράψεις ό,τι θες
                     row.innerHTML = `
                         <td><strong>${p.name}</strong></td>
                         <td>${p.stock}</td>
                         <td>${p.min_required}</td>
-                        <td><input type="number" class="order-qty-input" data-id="${p.id}" value="${p.qty}" min="1" onchange="updateQtyMemory(${p.id}, this.value)"></td>
+                        <td><input type="number" class="order-qty-input" data-id="${p.id}" value="${p.qty}" min="0" oninput="updateQtyMemory(${p.id}, this.value)"></td>
                     `;
                     tbody.appendChild(row);
                 });
@@ -306,21 +304,31 @@
 
         function updateQtyMemory(id, value) {
             const item = currentOrderList.find(i => i.id === id);
-            if (item) item.qty = parseInt(value);
+            if (item) {
+                // Αν ο χρήστης το αφήσει κενό, αποθηκεύεται ως 0
+                item.qty = value === '' ? 0 : parseInt(value);
+            }
         }
 
         async function submitOrder() {
             const buyer = document.getElementById('order-buyer').value.trim();
             if (!buyer) { alert("Παρακαλώ εισάγετε το όνομά σας."); return; }
 
-            const items = currentOrderList.map(i => ({ product_id: i.id, requested_qty: i.qty }));
-            if (items.length === 0) { alert("Δεν υπάρχουν προϊόντα στη λίστα."); return; }
+            // Φιλτράρουμε τη λίστα ώστε να ΜΗΝ στείλουμε προϊόντα που έχουν ποσότητα 0 ή έμειναν κενά
+            const finalItems = currentOrderList
+                .filter(i => i.qty > 0)
+                .map(i => ({ product_id: i.id, requested_qty: i.qty }));
+
+            if (finalItems.length === 0) { 
+                alert("Δεν υπάρχουν προϊόντα με ποσότητα μεγαλύτερη από 0 για να παραγγελθούν."); 
+                return; 
+            }
 
             try {
                 const res = await fetch(`${API_BASE}/orders`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ordered_by: buyer, items })
+                    body: JSON.stringify({ ordered_by: buyer, items: finalItems })
                 });
                 if (res.ok) { 
                     alert("Η παραγγελία καταγράφηκε με επιτυχία!"); 
@@ -358,26 +366,26 @@
                     const dateFormatted = new Date(o.date).toLocaleString('el-GR');
                     div.innerHTML = `
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px;">
-                            <span><strong>Παραγγελία #\${o.id}</strong> - Από: 👤 \${o.buyer}</span>
-                            <span style="font-size:13px; color:#718096;">📅 \${dateFormatted}</span>
-                            <button class="btn-delete" onclick="deleteOrder(\${o.id})">🗑️ Διαγραφή</button>
+                            <span><strong>Παραγγελία #${o.id}</strong> - Από: 👤 ${o.buyer}</span>
+                            <span style="font-size:13px; color:#718096;">📅 ${dateFormatted}</span>
+                            <button class="btn-delete" onclick="deleteOrder(${o.id})">🗑️ Διαγραφή</button>
                         </div>
                         <table>
                             <thead><tr><th>Προϊόν</th><th>Προμηθευτής</th><th>Ζητήθηκαν</th><th style="width:140px;">Πραγματική Παραλαβή</th></tr></thead>
-                            <tbody id="receive-body-\${o.id}"></tbody>
+                            <tbody id="receive-body-${o.id}"></tbody>
                         </table>
-                        <button class="btn-primary" style="margin-top:10px; background-color:#38a169; padding:8px;" onclick="confirmReceipt(\${o.id})">✔ Επιβεβαίωση Παραλαβής & Ενημέρωση Αποθήκης</button>
+                        <button class="btn-primary" style="margin-top:10px; background-color:#38a169; padding:8px;" onclick="confirmReceipt(${o.id})">✔ Επιβεβαίωση Παραλαβής & Ενημέρωση Αποθήκης</button>
                     `;
                     container.appendChild(div);
 
-                    const tbody = document.getElementById(`receive-body-\${o.id}`);
+                    const tbody = document.getElementById(`receive-body-${o.id}`);
                     o.items.forEach(item => {
                         const tr = document.createElement('tr');
                         tr.innerHTML = `
-                            <td>\${item.product_name}</td>
-                            <td>\${item.supplier}</td>
-                            <td><strong>\${item.requested_qty}</strong></td>
-                            <td><input type="number" class="receive-qty-input-\${o.id}" data-pid="\${item.product_id}" value="\${item.requested_qty}" min="0"></td>
+                            <td>${item.product_name}</td>
+                            <td>${item.supplier}</td>
+                            <td><strong>${item.requested_qty}</strong></td>
+                            <td><input type="number" class="receive-qty-input-${o.id}" data-pid="${item.product_id}" value="${item.requested_qty}" min="0"></td>
                         `;
                         tbody.appendChild(tr);
                     });
@@ -387,7 +395,7 @@
 
         async function confirmReceipt(orderId) {
             const items = [];
-            document.querySelectorAll(`.receive-qty-input-\${orderId}`).forEach(input => {
+            document.querySelectorAll(`.receive-qty-input-${orderId}`).forEach(input => {
                 items.push({ product_id: parseInt(input.dataset.pid), received_qty: parseInt(input.value) });
             });
 
@@ -402,10 +410,10 @@
         }
 
         async function deleteOrder(orderId) {
-            if (!confirm(`Είστε σίγουροι ότι θέλετε να διαγράψετε την Παραγγελία #\${orderId} τελείως;`)) return;
+            if (!confirm(`Είστε σίγουροι ότι θέλετε να διαγράψετε την Παραγγελία #${orderId} τελείως;`)) return;
 
             try {
-                const res = await fetch(`${API_BASE}/orders/\${orderId}`, { method: 'DELETE' });
+                const res = await fetch(`${API_BASE}/orders/${orderId}`, { method: 'DELETE' });
                 if (res.ok) {
                     alert("Η παραγγελία διαγράφηκε επιτυχώς!");
                     loadPendingOrders();
@@ -415,7 +423,6 @@
             } catch (err) { console.error(err); }
         }
 
-        // Αρχικό Φόρτωμα
         loadInventory();
     </script>
 </body>
