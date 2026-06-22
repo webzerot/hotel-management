@@ -6,22 +6,20 @@ const { Pool } = require('pg');
 const app = express();
 app.use(cors());
 app.use(express.json());
-
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Χρησιμοποιούμε το Transaction Pooler (port 6543) με connectionString
-// ώστε το sslmode=require να μεταφερθεί σωστά στον driver
 const pool = new Pool({
-  connectionString: 'postgresql://postgres.mzdecptbtpgkzpbplwjp:hotel-management1@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
-  ssl: {
-    rejectUnauthorized: false   // ← αυτό παρακάμπτει το self-signed cert
-  },
-  max: 5,
+  host: 'db.mzdecptbtpgkzpbplwjp.supabase.co',  // Direct connection, όχι pooler
+  port: 5432,
+  user: 'postgres',                               // Απλό username, ΟΧΙ το tenant format
+  password: 'hotel-management1',
+  database: 'postgres',
+  ssl: { rejectUnauthorized: false },
+  max: 3,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: 15000,
 });
 
-// Test σύνδεσης κατά την εκκίνηση — βλέπεις στα Render logs αν δουλεύει
 pool.connect((err, client, release) => {
   if (err) {
     console.error('❌ Αποτυχία σύνδεσης με Supabase:', err.message);
