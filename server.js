@@ -12,7 +12,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Χρησιμοποιούμε το Transaction Pooler (port 6543) με connectionString
 // ώστε το sslmode=require να μεταφερθεί σωστά στον driver
 const pool = new Pool({
-  connectionString: 'postgresql://postgres.mzdecptbtpgkzpbplwjp:hotel-management1@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require',
+  connectionString: 'postgresql://postgres.mzdecptbtpgkzpbplwjp:hotel-management1@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
+  ssl: {
+    rejectUnauthorized: false   // ← αυτό παρακάμπτει το self-signed cert
+  },
   max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
