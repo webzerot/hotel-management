@@ -123,8 +123,9 @@ app.get('/api/orders/pending', async (req, res) => {
 
 app.get('/api/orders/all', async (req, res) => {
   try {
+    // Πρόσθεσε το received_at στο SELECT
     const result = await pool.query(`
-      SELECT o.id as order_id, o.ordered_by, o.status, o.created_at, o.total_cost, oi.requested_qty, oi.received_qty, p.name as product_name, p.supplier
+      SELECT o.id as order_id, o.ordered_by, o.status, o.created_at, o.received_at, o.total_cost, oi.requested_qty, oi.received_qty, p.name as product_name, p.supplier
       FROM orders o JOIN order_items oi ON o.id = oi.order_id JOIN products p ON oi.product_id = p.id ORDER BY o.id DESC
     `);
     res.json(result.rows);
