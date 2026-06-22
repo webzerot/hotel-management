@@ -56,7 +56,7 @@
         .pie-chart { width: 180px; height: 180px; border-radius: 50%; background: conic-gradient(#edf2f7 0% 100%); box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; }
         .pie-legend { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; font-size: 12px; font-weight: bold; }
         .legend-item { display: flex; align-items: center; gap: 5px; }
-        .legend-color { width: 12px; height: 12px; border-radius: 3px; }
+        .legend-color { width: 12px; height: 12px; display: inline-block; border-radius: 2px; }
 
         @media print {
             body { background: white; color: black; }
@@ -88,7 +88,6 @@
     </div>
 
     <div class="container">
-        
         <div id="tab-inventory" class="tab-content active">
             <div class="card">
                 <h2>Προσθήκη Νέου Είδους</h2>
@@ -104,7 +103,6 @@
                     <button type="submit" class="btn-primary">Προσθήκη στην Αποθήκη +</button>
                 </form>
             </div>
-
             <div class="card">
                 <h2>Τρέχον Απόθεμα Αποθήκης</h2>
                 <div class="form-grid" style="margin-bottom: 20px;">
@@ -117,16 +115,7 @@
                 <div class="table-responsive">
                     <table>
                         <thead>
-                            <tr>
-                                <th>Προϊόν</th>
-                                <th>Απόθεμα</th>
-                                <th>Γρήγορη Χρήση</th>
-                                <th>Όριο Ασφαλείας</th>
-                                <th>Προτειν. Ποσότητα</th>
-                                <th>Προμηθευτής</th>
-                                <th>Κατάσταση</th>
-                                <th>Ενέργειες</th>
-                            </tr>
+                            <tr><th>Προϊόν</th><th>Απόθεμα</th><th>Γρήγορη Χρήση</th><th>Όριο Ασφαλείας</th><th>Προτειν. Ποσότητα</th><th>Προμηθευτής</th><th>Κατάσταση</th><th>Ενέργειες</th></tr>
                         </thead>
                         <tbody id="inventory-body"></tbody>
                     </table>
@@ -140,10 +129,10 @@
                 <div class="form-grid" style="align-items: flex-end;">
                     <input type="text" id="new-supplier-name" placeholder="Όνομα Προμηθευτή (π.χ. ΜΑΥΡΟΥΔΗΣ)">
                     <input type="text" id="new-supplier-phone" placeholder="Τηλέφωνο (π.χ. 2310XXXXXX)">
-                    <button type="button" class="btn-primary" onclick="addNewSupplierFromTab()">➕ Προσθήκη Προμηθευτή</button>
+                    <button type="button" class="btn-primary" onclick="addNewSupplierFromTab()">➕ Προσθήκη</button>
                 </div>
                 <div style="margin-top: 10px; text-align: right;">
-                    <button class="btn-delete" style="padding: 8px 12px; font-size:12px;" onclick="clearAllSuppliers()">🗑️ Διαγραφή ΟΛΩΝ των Προμηθευτών</button>
+                    <button class="btn-delete" style="padding: 8px 12px; font-size:12px;" onclick="clearAllSuppliers()">🗑️ Διαγραφή ΟΛΩΝ</button>
                 </div>
             </div>
             <div id="suppliers-list-container"></div>
@@ -153,44 +142,31 @@
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
                     <h2 style="margin:0;">Δημιουργία Παραγγελίας</h2>
-                    <button type="button" class="btn-pdf" onclick="window.print()">📄 Αποθήκευση Λίστας (PDF)</button>
+                    <button type="button" class="btn-pdf" onclick="window.print()">📄 PDF</button>
                 </div>
-                
                 <div class="manual-add-box">
-                    <div style="flex: 2;">
-                        <select id="manual-product-select"><option value="">-- Επιλέξτε Προϊόν --</option></select>
-                    </div>
-                    <button type="button" class="btn-primary" style="flex: 1; padding: 10px;" onclick="addManualProductToOrder()">➕ Προσθήκη στη Λίστα</button>
+                    <div style="flex: 2;"><select id="manual-product-select"><option value="">-- Επιλέξτε Προϊόν --</option></select></div>
+                    <button type="button" class="btn-primary" style="flex: 1; padding: 10px;" onclick="addManualProductToOrder()">➕ Προσθήκη</button>
                 </div>
-
                 <div class="action-buttons-order" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
                     <button type="button" class="btn-primary" style="background-color: #e53e3e; max-width: 180px; padding: 8px 12px; font-size: 13px;" onclick="clearEntireCurrentOrder()">🧹 Αφαίρεση Όλων</button>
-                    <button type="button" class="btn-primary" style="background-color: #2b6cb0; max-width: 250px; padding: 8px 12px; font-size: 13px;" onclick="addAllLowStockProductsAutomatically()">🚨 Αυτόματη Προσθήκη Ελλειμμάτων</button>
+                    <button type="button" class="btn-primary" style="background-color: #2b6cb0; max-width: 250px; padding: 8px 12px; font-size: 13px;" onclick="addAllLowStockProductsAutomatically()">🚨 Αυτόματη Προσθήκη</button>
                 </div>
-
-                <div style="margin-bottom: 20px; max-width: 300px;">
-                    <input type="text" id="order-buyer" placeholder="Όνομα ατόμου που παραγγέλνει">
-                </div>
+                <div style="margin-bottom: 20px; max-width: 300px;"><input type="text" id="order-buyer" placeholder="Όνομα ατόμου"></div>
                 <div id="order-groups-container"></div>
-                <button type="button" class="btn-primary" style="background-color: #2b6cb0;" onclick="submitOrder()">Αποστολή Παραγγελίας 🚀</button>
+                <button type="button" class="btn-primary" style="background-color: #2b6cb0;" onclick="submitOrder()">Αποστολή 🚀</button>
             </div>
         </div>
 
         <div id="tab-receiving" class="tab-content">
-            <div class="card">
-                <h2>Εκκρεμείς Παραγγελίες</h2>
-                <div id="pending-orders-container"></div>
-            </div>
+            <div class="card"><h2>Εκκρεμείς Παραγγελίες</h2><div id="pending-orders-container"></div></div>
         </div>
 
         <div id="tab-history" class="tab-content">
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
-                    <h2>Γενικό Αρχείο Παραγγελιών</h2>
-                    <button type="button" class="btn-pdf" onclick="window.print()">📄 Εξαγωγή Ιστορικού (PDF)</button>
-                </div>
-                <div style="text-align: right; margin-bottom: 15px;">
-                    <button class="btn-delete" style="background-color: #cbd5e0; color: #4a5568;" onclick="clearAllOrdersHistory()">🗑️ Καθαρισμός Ιστορικού</button>
+                    <h2>Ιστορικό Παραγγελιών</h2>
+                    <button type="button" class="btn-pdf" onclick="window.print()">📄 PDF</button>
                 </div>
                 <div id="all-orders-history-container"></div>
             </div>
@@ -204,7 +180,7 @@
                     <option value="month">Τελευταίος Μήνας</option>
                     <option value="year">Τελευταίο Έτος</option>
                 </select>
-                <button type="button" class="btn-pdf" onclick="window.print()">📊 Αποθήκευση Στατιστικών (PDF)</button>
+                <button type="button" class="btn-pdf" onclick="window.print()">📊 PDF</button>
             </div>
             <div class="stats-grid">
                 <div class="stat-box" style="border-left-color: #2b6cb0;"><h3>Σύνολο Ειδών</h3><div class="num" id="stat-total-items">0</div></div>
@@ -227,21 +203,20 @@
                     </div>
                 </div>
             </div>
-            <div class="card"><h2>🚨 Ελλείψεις Αποθήκης (SOS)</h2><div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Απόθεμα</th><th>Όριο</th><th>Προμηθευτής</th></tr></thead><tbody id="analytics-current-low-body"></tbody></table></div></div>
+            <div class="card"><h2>🚨 Ελλείψεις (SOS)</h2><div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Απόθεμα</th><th>Όριο</th><th>Προμηθευτής</th></tr></thead><tbody id="analytics-current-low-body"></tbody></table></div></div>
             <div class="card"><h2>📦 Όγκος Παραλαβών</h2><div id="analytics-chart-container"></div></div>
             <div class="card"><h2>📋 Ιστορικό Κινήσεων</h2><div class="table-responsive"><table><thead><tr><th>Ημερομηνία/Ώρα</th><th>Προϊόν</th><th>Ποσότητα</th><th>Αιτιολογία</th></tr></thead><tbody id="analytics-logs-body"></tbody></table></div></div>
             <div class="card card-clean-logs" style="border: 1px solid #feebc8; background-color: #fffaf0;">
-                <h3>🧹 Καθαρισμός Ιστορικού Analytics &amp; Κινήσεων</h3>
+                <h3>🧹 Καθαρισμός Ιστορικού</h3>
                 <div style="display:flex; flex-wrap:wrap;">
-                    <button class="btn-clean" onclick="clearLogsRange('week')">Διαγραφή Τελ. Εβδομάδας</button>
-                    <button class="btn-clean" onclick="clearLogsRange('month')">Διαγραφή Τελ. Μήνα</button>
-                    <button class="btn-clean" onclick="clearLogsRange('year')">Διαγραφή Τελ. Χρόνου</button>
-                    <button class="btn-clean" style="background-color:#e53e3e;" onclick="clearLogsRange('all')">🗑️ Διαγραφή ΟΛΩΝ</button>
+                    <button class="btn-clean" onclick="clearLogsRange('week')">Εβδομάδα</button>
+                    <button class="btn-clean" onclick="clearLogsRange('month')">Μήνα</button>
+                    <button class="btn-clean" onclick="clearLogsRange('year')">Χρόνο</button>
+                    <button class="btn-clean" style="background-color:#e53e3e;" onclick="clearLogsRange('all')">🗑️ ΟΛΑ</button>
                 </div>
             </div>
         </div>
-
-        <div class="danger-zone"><button class="btn-delete" style="background-color: #e53e3e;" onclick="resetEntireDatabase()">⚠️ Ολικό Reset (Διαγραφή Όλων)</button></div>
+        <div class="danger-zone"><button class="btn-delete" style="background-color: #e53e3e;" onclick="resetEntireDatabase()">⚠️ Ολικό Reset</button></div>
     </div>
 
     <script>
@@ -251,7 +226,7 @@
         function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); document.getElementById(tabId).classList.add('active'); if(event && event.target && event.target.classList) event.target.classList.add('active'); }
         async function loadInventory() { try { const res = await fetch(API_BASE + '/products'); allProducts = await res.json(); renderInventoryTable(); updateSuppliersDatalist(); } catch (err) { console.error(err); } }
         function updateSuppliersDatalist() { const datalist = document.getElementById('suppliers-datalist'); datalist.innerHTML = ''; const sups = []; allProducts.forEach(p => { if(p.supplier && p.supplier !== 'Άγνωστος' && !sups.includes(p.supplier)) sups.push(p.supplier); }); sups.forEach(s => { datalist.innerHTML += '<option value="' + s + '">'; }); }
-        function renderInventoryTable() { const tbody = document.getElementById('inventory-body'); const supplierFilter = document.getElementById('filter-supplier').value.toLowerCase(); const statusFilter = document.getElementById('filter-status').value; tbody.innerHTML = ''; allProducts.forEach(p => { if (p.name.startsWith('Καρτέλα ')) return; const isLow = p.stock <= p.min_required; if (statusFilter === 'low' && !isLow) return; if (supplierFilter && !p.supplier.toLowerCase().includes(supplierFilter)) return; const statusBadge = isLow ? '<span class="alert-badge">Χαμηλό</span>' : '<span class="ok-badge">OK</span>'; tbody.innerHTML += `<tr id="row-${p.id}"><td><span class="view-mode-${p.id}"><strong>${p.name}</strong></span><input type="text" class="edit-mode-${p.id}" value="${p.name}" style="display:none; max-width:150px;"></td><td><strong id="stock-val-${p.id}">${p.stock}</strong></td><td><button class="btn-quick-stock" style="background-color:#48bb78;" onclick="changeQuickStock(${p.id}, 1, 'Συμπλήρωση')">+</button><button class="btn-quick-stock" style="background-color:#dd6b20;" onclick="changeQuickStock(${p.id}, -1, 'Κατανάλωση στο Πρωινό')">-</button></td><td><span class="view-mode-${p.id}">${p.min_required}</span><input type="number" class="edit-mode-${p.id}" value="${p.min_required}" style="display:none; max-width:80px;"></td><td><span class="view-mode-${p.id}">${p.suggested_qty || 5}</span><input type="number" class="edit-mode-${p.id}" value="${p.suggested_qty || 5}" style="display:none; max-width:80px;"></td><td><span class="view-mode-${p.id}">${p.supplier}</span><input type="text" class="edit-mode-${p.id}" value="${p.supplier}" style="display:none; max-width:120px;"></td><td>${statusBadge}</td><td><button class="btn-sm btn-edit view-mode-${p.id}" onclick="enableEdit(${p.id})">✏️</button><button class="btn-sm btn-save edit-mode-${p.id}" onclick="saveEdit(${p.id})" style="display:none;">💾</button><button class="btn-sm view-mode-${p.id}" style="background-color:#e53e3e; color:white;" onclick="deleteProduct(${p.id}, '${p.name}')">🗑️</button></td></tr>`; }); }
+        function renderInventoryTable() { const tbody = document.getElementById('inventory-body'); const supplierFilter = document.getElementById('filter-supplier').value.toLowerCase(); const statusFilter = document.getElementById('filter-status').value; tbody.innerHTML = ''; allProducts.forEach(p => { if (p.name.startsWith('Καρτέλα ')) return; const isLow = p.stock <= p.min_required; if (statusFilter === 'low' && !isLow) return; if (supplierFilter && !p.supplier.toLowerCase().includes(supplierFilter)) return; tbody.innerHTML += `<tr id="row-${p.id}"><td><span class="view-mode-${p.id}"><strong>${p.name}</strong></span><input type="text" class="edit-mode-${p.id}" value="${p.name}" style="display:none; max-width:150px;"></td><td><strong id="stock-val-${p.id}">${p.stock}</strong></td><td><button class="btn-quick-stock" style="background-color:#48bb78;" onclick="changeQuickStock(${p.id}, 1, 'Συμπλήρωση')">+</button><button class="btn-quick-stock" style="background-color:#dd6b20;" onclick="changeQuickStock(${p.id}, -1, 'Κατανάλωση στο Πρωινό')">-</button></td><td><span class="view-mode-${p.id}">${p.min_required}</span><input type="number" class="edit-mode-${p.id}" value="${p.min_required}" style="display:none; max-width:80px;"></td><td><span class="view-mode-${p.id}">${p.suggested_qty || 5}</span><input type="number" class="edit-mode-${p.id}" value="${p.suggested_qty || 5}" style="display:none; max-width:80px;"></td><td><span class="view-mode-${p.id}">${p.supplier}</span><input type="text" class="edit-mode-${p.id}" value="${p.supplier}" style="display:none; max-width:120px;"></td><td>${isLow ? '<span class="alert-badge">Χαμηλό</span>' : '<span class="ok-badge">OK</span>'}</td><td><button class="btn-sm btn-edit view-mode-${p.id}" onclick="enableEdit(${p.id})">✏️</button><button class="btn-sm btn-save edit-mode-${p.id}" onclick="saveEdit(${p.id})" style="display:none;">💾</button><button class="btn-sm view-mode-${p.id}" style="background-color:#e53e3e; color:white;" onclick="deleteProduct(${p.id}, '${p.name}')">🗑️</button></td></tr>`; }); }
         async function changeQuickStock(id, change, reason) { try { const res = await fetch(`${API_BASE}/products/${id}/quick-stock`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ change, reason }) }); if (res.ok) { const updatedProduct = await res.json(); document.getElementById(`stock-val-${id}`).innerText = updatedProduct.stock; loadInventory(); } } catch (err) { console.error(err); } }
         function enableEdit(id) { document.querySelectorAll('.view-mode-' + id).forEach(el => el.style.display = 'none'); document.querySelectorAll('.edit-mode-' + id).forEach(el => el.style.display = 'inline-block'); }
         async function saveEdit(id) { const inputs = document.querySelectorAll('.edit-mode-' + id); const updatedData = { name: inputs[0].value, min_required: parseInt(inputs[1].value) || 0, suggested_qty: parseInt(inputs[2].value) || 5, supplier: inputs[3].value }; try { const res = await fetch(API_BASE + '/products/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedData) }); if (res.ok) { await loadInventory(); if(document.getElementById('tab-suppliers').classList.contains('active')) loadSuppliersPage(); } } catch (err) { console.error(err); } }
