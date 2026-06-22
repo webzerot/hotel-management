@@ -6,17 +6,29 @@ const { Pool } = require('pg');
 const app = express();
 app.use(cors());
 app.use(express.json());
-
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Απευθείας σύνδεση στην IP για να προσπεράσουμε το IPv6 bug του Render
+// Οι ρυθμίσεις σύνδεσης που ξέρουμε ότι λειτουργούν 100% για το δικό σου region
 const pool = new Pool({
-  host: '54.93.47.168',
-  port: 6543,
+  host: 'aws-0-eu-west-1.pooler.supabase.com',  
+  port: 5432,                                     
   user: 'postgres.mzdecptbtpgkzpbplwjp',
   password: 'hotel-management1',
   database: 'postgres',
-  ssl: { rejectUnauthorized: false }
+  ssl: { rejectUnauthorized: false },
+  family: 4,
+  max: 3,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 15000,
+});
+
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('❌ Αποτυχία σύνδεσης με Supabase:', err.message);
+  } else {
+    console.log('✅ Σύνδεση με Supabase επιτυχής!');
+    release();
+  }
 });
 
 // 1. GET: Όλα τα προϊόντα
@@ -25,8 +37,8 @@ app.get('/api/products', async (req, res) => {
     const result = await pool.query('SELECT * FROM products ORDER BY id ASC');
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.error('Query error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
   }
 });
 
@@ -41,8 +53,8 @@ app.post('/api/products', async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.error('Insert error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
   }
 });
 
@@ -58,14 +70,14 @@ app.put('/api/products/:id', async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.error('Update error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
   }
 });
 
 // 4. POST: Δημιουργία Νέας Παραγγελίας
 app.post('/api/orders', async (req, res) => {
-  const { ordered_by, items } = req.body; // items: [{product_id, requested_qty}]
+  const { ordered_by, items } = req.body; 
   try {
     const orderRes = await pool.query(
       'INSERT INTO orders (ordered_by) VALUES ($1) RETURNING *',
@@ -81,8 +93,8 @@ app.post('/api/orders', async (req, res) => {
     }
     res.json({ success: true, orderId });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.error('Order creation error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
   }
 });
 
@@ -100,30 +112,26 @@ app.get('/api/orders/pending', async (req, res) => {
     `);
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.error('Pending orders error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
   }
 });
 
 // 6. POST: Επιβεβαίωση Παραλαβής
 app.post('/api/orders/receive', async (req, res) => {
-  const { order_id, items } = req.body; // items: [{product_id, received_qty}]
+  const { order_id, items } = req.body; 
   try {
-    // Ενημέρωση κατάστασης παραγγελίας
     await pool.query("UPDATE orders SET status = 'Παραλήφθηκε' WHERE id = $1", [order_id]);
 
     for (let item of items) {
-      // Ενημέρωση ποσότητας στο order_items
       await pool.query(
         'UPDATE order_items SET received_qty = $1 WHERE order_id = $2 AND product_id = $3',
         [item.received_qty, order_id, item.product_id]
       );
-      // Προσθήκη των προϊόντων στο live απόθεμα της αποθήκης
       await pool.query(
         'UPDATE products SET stock = stock + $1 WHERE id = $2',
         [item.received_qty, item.product_id]
       );
-      // Καταγραφή στο ιστορικό (Log)
       await pool.query(
         'INSERT INTO stock_log (product_id, change_amount, reason) VALUES ($1, $2, $3)',
         [item.product_id, item.received_qty, 'Παραλαβή Παραγγελίας']
@@ -131,8 +139,8 @@ app.post('/api/orders/receive', async (req, res) => {
     }
     res.json({ success: true });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.error('Receiving error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
   }
 });
 
@@ -141,4 +149,6 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
