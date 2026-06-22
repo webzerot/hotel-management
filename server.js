@@ -52,6 +52,11 @@ app.post('/api/products', async (req, res) => {
       'INSERT INTO products (name, stock, min_required, supplier, suggested_qty) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [name, stock, min_required, supplier, sugQty]
     );
+    // Καταγραφή αρχικής εισαγωγής στα logs
+    await pool.query(
+      'INSERT INTO stock_log (product_id, change_amount, reason) VALUES ($1, $2, $3)',
+      [result.rows[0].id, stock, 'Αρχική Εισαγωγή']
+    );
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Insert error:', err.message);
@@ -170,10 +175,26 @@ app.delete('/api/orders/:id', async (req, res) => {
   }
 });
 
-// 9. POST: ΟΛΙΚΟ RESET ΒΑΣΗΣ ΔΕΔΟΜΕΝΩΝ (ΝΕΟ)
+// 9. GET: Ιστορικό Κινήσεων για τα Analytics (ΝΕΟ)
+app.get('/api/analytics/logs', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT sl.id, p.name as product_name, sl.change_amount, sl.reason, sl.changed_at 
+      FROM stock_log sl
+      JOIN products p ON sl.product_id = p.id
+      ORDER BY sl.changed_at DESC 
+      LIMIT 100
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Analytics logs error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
+  }
+});
+
+// 10. POST: ΟΛΙΚΟ RESET ΒΑΣΗΣ ΔΕΔΟΜΕΝΩΝ
 app.post('/api/reset-database', async (req, res) => {
   try {
-    // Καθαρίζει όλους τους πίνακες και μηδενίζει τα IDs (CASCADE για ασφάλεια)
     await pool.query('TRUNCATE TABLE order_items, orders, stock_log, products RESTART IDENTITY CASCADE');
     res.json({ success: true });
   } catch (err) {
