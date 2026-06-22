@@ -52,7 +52,6 @@ app.post('/api/products', async (req, res) => {
       'INSERT INTO products (name, stock, min_required, supplier, suggested_qty) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [name, stock, min_required, supplier, sugQty]
     );
-    // Καταγραφή αρχικής εισαγωγής στα logs
     await pool.query(
       'INSERT INTO stock_log (product_id, change_amount, reason) VALUES ($1, $2, $3)',
       [result.rows[0].id, stock, 'Αρχική Εισαγωγή']
@@ -117,7 +116,7 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-// 6. GET: Λίστα Εκκρεμών Παραγγελιών
+// 6. GET: Λίστα Εκκρεμών Παραγγελιών (Μόνο αυτές που εκκρεμούν)
 app.get('/api/orders/pending', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -136,7 +135,25 @@ app.get('/api/orders/pending', async (req, res) => {
   }
 });
 
-// 7. POST: Επιβεβαίωση Παραλαβής
+// 7. GET: ΟΛΟ το Γενικό Ιστορικό Παραγγελιών (ΝΕΟ)
+app.get('/api/orders/all', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT o.id as order_id, o.ordered_by, o.status, o.created_at, 
+             oi.requested_qty, oi.received_qty, p.name as product_name, p.supplier
+      FROM orders o
+      JOIN order_items oi ON o.id = oi.order_id
+      JOIN products p ON oi.product_id = p.id
+      ORDER BY o.id DESC
+    `);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('All orders history error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
+  }
+});
+
+// 8. POST: Επιβεβαίωση Παραλαβής
 app.post('/api/orders/receive', async (req, res) => {
   const { order_id, items } = req.body; 
   try {
@@ -163,7 +180,7 @@ app.post('/api/orders/receive', async (req, res) => {
   }
 });
 
-// 8. DELETE: Διαγραφή Κατά Λάθος Παραγγελίας
+// 9. DELETE: Διαγραφή μίας μεμονωμένης παραγγελίας
 app.delete('/api/orders/:id', async (req, res) => {
   const { id } = req.params;
   try {
@@ -175,7 +192,18 @@ app.delete('/api/orders/:id', async (req, res) => {
   }
 });
 
-// 9. GET: Ιστορικό Κινήσεων για τα Analytics (ΝΕΟ)
+// 10. DELETE: Μαζική διαγραφή ΟΛΩΝ των παραγγελιών (ΝΕΟ)
+app.delete('/api/orders/all/clear', async (req, res) => {
+  try {
+    await pool.query('TRUNCATE TABLE orders CASCADE');
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Clear all orders error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
+  }
+});
+
+// 11. GET: Ιστορικό Κινήσεων για τα Analytics
 app.get('/api/analytics/logs', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -192,7 +220,7 @@ app.get('/api/analytics/logs', async (req, res) => {
   }
 });
 
-// 10. POST: ΟΛΙΚΟ RESET ΒΑΣΗΣ ΔΕΔΟΜΕΝΩΝ
+// 12. POST: ΟΛΙΚΟ RESET ΒΑΣΗΣ ΔΕΔΟΜΕΝΩΝ
 app.post('/api/reset-database', async (req, res) => {
   try {
     await pool.query('TRUNCATE TABLE order_items, orders, stock_log, products RESTART IDENTITY CASCADE');
