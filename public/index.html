@@ -238,7 +238,47 @@
         async function editSupplierDetails(oldName, oldPhone) { const newName = prompt("Νέο όνομα:", oldName); if (!newName || newName.trim() === '') return; const newPhone = prompt("Νέο τηλέφωνο:", oldPhone); for (let p of allProducts) { if (p.supplier === oldName) { let updatedName = p.name; if (p.name.startsWith('Καρτέλα ')) updatedName = 'Καρτέλα ' + newName + ' - Τηλ:' + newPhone; await fetch(API_BASE + '/products/' + p.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: updatedName, min_required: p.min_required, suggested_qty: p.suggested_qty, supplier: newName }) }); } } loadSuppliersPage(); }
         async function deleteSupplier(supName) { if (!confirm('Διαγραφή ' + supName + ';')) return; try { const res = await fetch(API_BASE + '/suppliers/' + supName, { method: 'DELETE' }); if (res.ok) loadSuppliersPage(); } catch(err) { console.error(err); } }
         async function clearAllSuppliers() { if (!confirm("Διαγραφή όλων;")) return; try { for (let p of allProducts) { await fetch(API_BASE + '/products/' + p.id, { method: 'DELETE' }); } loadSuppliersPage(); } catch(err) { console.error(err); } }
-        function initOrderPage() { const select = document.getElementById('manual-product-select'); select.innerHTML = '<option value="">-- Επιλέξτε Προϊόν --</option>'; allProducts.forEach(p => { if (!p.name.startsWith('Καρτέλα ')) select.innerHTML += '<option value="' + p.id + '">' + p.name + ' (Απόθεμα: ' + p.stock + ')</option>'; }); addAllLowStockProductsAutomatically(); }
+        function initOrderPage() {
+            const select = document.getElementById('manual-product-select');
+            select.innerHTML = '<option value="">-- Επιλέξτε Προϊόν --</option>';
+            allProducts.forEach(p => { 
+                if (!p.name.startsWith('Καρτέλα ')) {
+                    select.innerHTML += `<option value="${p.id}">${p.name} (Απόθεμα: ${p.stock})</option>`;
+                }
+            });
+            // Μην καλείς αυτόματα την αυτόματη προσθήκη εδώ αν θες να έχεις τον έλεγχο
+            renderOrderGroups();
+        }
+        function addManualProductToOrder() {
+            const select = document.getElementById('manual-product-select');
+            const prodId = parseInt(select.value);
+            
+            console.log("Προσπάθεια προσθήκης προϊόντος με ID:", prodId);
+
+            if (!prodId) {
+                alert("Παρακαλώ επιλέξτε ένα προϊόν από τη λίστα!");
+                return;
+            }
+
+            if (currentOrderList.some(item => item.id === prodId)) {
+                alert("Το προϊόν υπάρχει ήδη στη λίστα!");
+                return;
+            }
+
+            const p = allProducts.find(item => item.id === prodId);
+            if (p) {
+                currentOrderList.push({ 
+                    id: p.id, 
+                    name: p.name, 
+                    stock: p.stock, 
+                    min_required: p.min_required, 
+                    supplier: p.supplier || 'Άγνωστος', 
+                    suggested_qty: p.suggested_qty || 5, 
+                    qty: p.suggested_qty || 5 // Προεπιλογή την προτεινόμενη
+                });
+                renderOrderGroups();
+            }
+        }
         function addAllLowStockProductsAutomatically() { allProducts.forEach(p => { if (p.stock <= p.min_required && !p.name.startsWith('Καρτέλα ')) { if (!currentOrderList.some(item => item.id === p.id)) { currentOrderList.push({ id: p.id, name: p.name, stock: p.stock, min_required: p.min_required, supplier: p.supplier || 'Άγνωστος', suggested_qty: p.suggested_qty || 5, qty: '' }); } } }); renderOrderGroups(); }
         function clearEntireCurrentOrder() { if (currentOrderList.length === 0) return; if (confirm("Άδειασμα λίστας;")) { currentOrderList = []; renderOrderGroups(); } }
         function removeProductFromCurrentOrder(id) { currentOrderList = currentOrderList.filter(item => item.id !== id); renderOrderGroups(); }
