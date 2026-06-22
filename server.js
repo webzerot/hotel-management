@@ -135,13 +135,26 @@ app.post('/api/orders/receive', async (req, res) => {
   const { order_id, items, total_cost } = req.body; 
   const cost = total_cost && total_cost.trim() !== '' ? total_cost.trim() : 'Άγνωστο κόστος';
   try {
-    await pool.query("UPDATE orders SET status = 'Παραλήφθηκε', total_cost = $1 WHERE id = $2", [cost, order_id]);
+    // ΠΡΟΣΘΕΣΑΜΕ ΤΟ received_at = NOW()
+    await pool.query("UPDATE orders SET status = 'Παραλήφθηκε', total_cost = $1, received_at = NOW() WHERE id = $2", [cost, order_id]);
+    
     for (let item of items) {
       await pool.query('UPDATE order_items SET received_qty = $1 WHERE order_id = $2 AND product_id = $3', [item.received_qty, order_id, item.product_id]);
       await pool.query('UPDATE products SET stock = stock + $1 WHERE id = $2', [item.received_qty, item.product_id]);
       await pool.query('INSERT INTO stock_log (product_id, change_amount, reason) VALUES ($1, $2, $3)', [item.product_id, item.received_qty, 'Παραλαβή Παραγγελίας']);
     }
     res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Database error' }); }
+});
+
+// Επίσης, στο route '/api/orders/all' άλλαξε το SELECT για να φέρνει και το received_at:
+app.get('/api/orders/all', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT o.id as order_id, o.ordered_by, o.status, o.created_at, o.received_at, o.total_cost, oi.requested_qty, oi.received_qty, p.name as product_name, p.supplier
+      FROM orders o JOIN order_items oi ON o.id = oi.order_id JOIN products p ON oi.product_id = p.id ORDER BY o.id DESC
+    `);
+    res.json(result.rows);
   } catch (err) { res.status(500).json({ error: 'Database error' }); }
 });
 
