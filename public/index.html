@@ -307,7 +307,8 @@
                 id: row.order_id, 
                 buyer: row.ordered_by, 
                 status: row.status, 
-                date: row.created_at, // Η ημερομηνία έρχεται από τη βάση
+                created_at: row.created_at, 
+                received_at: row.received_at, // Νέο πεδίο
                 total_cost: row.total_cost, 
                 items: [] 
             }; 
@@ -316,7 +317,6 @@
         
         container.innerHTML = ''; 
         const ordersArray = Object.values(ordersMap); 
-        
         if (ordersArray.length === 0) { 
             container.innerHTML = '<p style="color:#718096;">Το ιστορικό είναι άδειο.</p>'; 
             return; 
@@ -326,35 +326,31 @@
             const div = document.createElement('div'); 
             div.className = 'order-card'; 
             
-            // Μετατροπή ημερομηνίας σε αναγνώσιμη μορφή
-            const formattedDate = new Date(o.date).toLocaleString('el-GR');
-            
-            // Έλεγχος αν το κόστος έχει ήδη σύμβολο €
+            const createdDate = new Date(o.created_at).toLocaleString('el-GR');
+            const receivedDate = o.received_at ? new Date(o.received_at).toLocaleString('el-GR') : null;
             const displayCost = o.total_cost.includes('€') ? o.total_cost : o.total_cost + ' €';
             
             let historyRows = ''; 
             o.items.forEach(item => { 
-                historyRows += '<tr><td>'+item.product_name+'</td><td>'+item.supplier+'</td><td><strong>'+item.requested_qty+'</strong></td><td>' + (o.status === 'Εκκρεμεί' ? '-' : '<strong>'+item.received_qty+'</strong>') + '</td></tr>'; 
+                historyRows += `<tr><td>${item.product_name}</td><td>${item.supplier}</td><td><strong>${item.requested_qty}</strong></td><td>${o.status === 'Εκκρεμεί' ? '-' : '<strong>'+item.received_qty+'</strong>'}</td></tr>`; 
             }); 
             
             div.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #cbd5e0; padding-bottom:5px; flex-wrap:wrap; gap:10px;">
                 <div>
                     <strong>Παραγγελία #${o.id}</strong> - 👤 ${o.buyer} (${o.status === 'Εκκρεμεί' ? '<span class="pending-badge">Εκκρεμεί</span>' : '<span class="ok-badge">Παραλήφθηκε</span>'})
-                    <br><small style="color:#718096;">📅 ${formattedDate}</small>
+                    <br><small style="color:#718096;">📅 Παρ/λήθηκε: ${createdDate} ${receivedDate ? `<br>✅ Παραλαβή: ${receivedDate}` : ''}</small>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span style="font-weight:bold; background:#edf2f7; padding:4px 8px; border-radius:4px; font-size:13px; color:#2c5282;">💰 ${displayCost}</span>
-                    <button class="btn-sm btn-edit" style="padding:4px 8px; font-size:11px;" onclick="updateHistoryCost(${o.id}, '${o.total_cost}')">✏️</button>
-                    <button class="btn-delete" style="padding:4px 8px; font-size:11px;" onclick="deleteOrder(${o.id}, 'history')">🗑️</button>
+                    <button class="btn-sm btn-edit" onclick="updateHistoryCost(${o.id}, '${o.total_cost}')">✏️</button>
+                    <button class="btn-delete" onclick="deleteOrder(${o.id}, 'history')">🗑️</button>
                 </div>
             </div>
             <div class="table-responsive"><table><thead><tr><th>Προϊόν</th><th>Προμηθευτής</th><th>Ζητήθηκαν</th><th>Ήρθαν</th></tr></thead><tbody>${historyRows}</tbody></table></div>`; 
             container.appendChild(div); 
         }); 
-    } catch (err) { 
-        console.error(err); 
-    } 
+    } catch (err) { console.error(err); } 
 }
         async function updateHistoryCost(orderId, currentCost) { const newCost = prompt("Νέο κόστος:", currentCost === 'Άγνωστο κόστος' ? '' : currentCost); if (newCost === null) return; try { const res = await fetch(`${API_BASE}/orders/${orderId}/cost`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ total_cost: newCost }) }); if (res.ok) loadAllOrdersHistory(); } catch (err) { console.error(err); } }
         async function deleteOrder(orderId, source) { if (!confirm('Διαγραφή παραγγελίας #' + orderId + ';')) return; try { const res = await fetch(API_BASE + '/orders/' + orderId, { method: 'DELETE' }); if (res.ok) { if (source === 'pending') loadPendingOrders(); else loadAllOrdersHistory(); } } catch (err) { console.error(err); } }
