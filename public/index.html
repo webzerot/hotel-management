@@ -8,14 +8,11 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f7fafc; color: #2d3748; }
         header { background-color: #1a365d; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         h1 { margin: 0; font-size: 22px; }
-        
-        /* SCROLLABLE TABS ΓΙΑ ΚΙΝΗΤΑ - Προσθήκη για να μην κρύβονται τα κουμπιά */
         .nav-tabs { display: flex; background: #2b6cb0; padding: 0 10px; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
-        .nav-tabs::-webkit-scrollbar { display: none; } /* Κρύβει τη μπάρα scroll */
+        .nav-tabs::-webkit-scrollbar { display: none; }
         .tab-btn { background: none; border: none; color: #e2e8f0; padding: 15px 20px; font-size: 16px; cursor: pointer; font-weight: bold; transition: 0.2s; flex-shrink: 0; }
         .tab-btn:hover { color: white; background: #2c5282; }
         .tab-btn.active { color: white; background: #1a365d; border-bottom: 3px solid #63b3ed; }
-        
         .container { max-width: 1100px; margin: 25px auto; padding: 0 20px; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -25,11 +22,8 @@
         input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 5px; box-sizing: border-box; font-size: 14px; }
         button.btn-primary { background-color: #319795; color: white; border: none; padding: 12px; font-size: 15px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; }
         button.btn-primary:hover { background-color: #2c7a7b; }
-        
-        /* TABLE RESPONSIVE SCROLL - Προσθήκη για να μην ξεχειλώνουν οι πίνακες στα κινητά */
         .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; min-width: 600px; } /* min-width για να κρατάει τη σωστή δομή του */
-        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; min-width: 600px; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         th { background-color: #edf2f7; color: #4a5568; }
         .alert-badge { background-color: #fed7d7; color: #9b2c2c; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
@@ -52,6 +46,8 @@
         .chart-bar-container { background: #edf2f7; border-radius: 5px; height: 24px; width: 100%; overflow: hidden; margin-top: 5px; position: relative; }
         .chart-bar { background: #319795; height: 100%; border-radius: 5px; transition: width 0.5s ease; }
         .chart-label { position: absolute; left: 10px; top: 2px; font-size: 13px; font-weight: bold; color: #1a365d; }
+        .btn-clean { background-color: #dd6b20; color: white; border: none; padding: 8px 12px; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 13px; margin-right: 8px; margin-bottom: 8px; }
+        .btn-clean:hover { background-color: #c05621; }
     </style>
 </head>
 <body>
@@ -71,6 +67,7 @@
 
     <div class="container">
         
+        <!-- TAB 1: ΑΠΟΘΗΚΗ -->
         <div id="tab-inventory" class="tab-content active">
             <div class="card">
                 <h2>Προσθήκη Νέου Είδους</h2>
@@ -114,6 +111,7 @@
             </div>
         </div>
 
+        <!-- TAB 2: ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ -->
         <div id="tab-orders" class="tab-content">
             <div class="card">
                 <h2>Δημιουργία Παραγγελίας</h2>
@@ -139,6 +137,7 @@
             </div>
         </div>
 
+        <!-- TAB 3: ΠΑΡΑΛΑΒΕΣ -->
         <div id="tab-receiving" class="tab-content">
             <div class="card">
                 <h2>Εκκρεμείς Παραγγελίες προς Παραλαβή / Διαγραφή</h2>
@@ -147,6 +146,7 @@
             </div>
         </div>
 
+        <!-- TAB 4: ΓΕΝΙΚΟ ΙΣΤΟΡΙΚΟ ΠΑΡΑΓΓΕΛΙΩΝ -->
         <div id="tab-history" class="tab-content">
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
@@ -158,7 +158,20 @@
             </div>
         </div>
 
+        <!-- TAB 5: ANALYTICS & ΣΤΑΤΙΣΤΙΚΑ (ΑΝΑΒΑΘΜΙΣΜΕΝΟ) -->
         <div id="tab-analytics" class="tab-content">
+            <div class="card" style="margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <label style="font-weight: bold; color: #1a365d;">📅 Επιλογή Χρονικού Διαστήματος Analytics:</label>
+                    <select id="analytics-time-range" style="max-width: 200px;" onchange="loadAnalytics()">
+                        <option value="all">Όλο το ιστορικό</option>
+                        <option value="week">Τελευταία Εβδομάδα (7 ημέρες)</option>
+                        <option value="month">Τελευταίος Μήνας (30 ημέρες)</option>
+                        <option value="year">Τελευταίο Έτος (365 ημέρες)</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="stats-grid">
                 <div class="stat-box" style="border-left-color: #2b6cb0;">
                     <h3>Σύνολο Ειδών</h3>
@@ -177,6 +190,18 @@
             <div class="card">
                 <h2>Συνολικές Παραλαβές ανά Προϊόν (Όγκος Κίνησης)</h2>
                 <div id="analytics-chart-container"></div>
+            </div>
+
+            <!-- ΣΤΟΧΕΥΜΕΝΟΣ ΚΑΘΑΡΙΣΜΟΣ LOGS -->
+            <div class="card" style="border: 1px solid #feebc8; background-color: #fffaf0;">
+                <h3 style="color:#c05621; margin-top:0;">🧹 Καθαρισμός Ιστορικού Analytics & Κινήσεων</h3>
+                <p style="font-size:13px; color:#718096; margin-bottom:15px;">Επιλέξτε ποιο κομμάτι του ιστορικού κινήσεων θέλετε να διαγράψετε οριστικά. Τα προϊόντα στην αποθήκη δεν θα επηρεαστούν.</p>
+                <div style="display:flex; flex-wrap:wrap;">
+                    <button class="btn-clean" onclick="clearLogsRange('week')">Διαγραφή Τελ. Εβδομάδας</button>
+                    <button class="btn-clean" onclick="clearLogsRange('month')">Διαγραφή Τελ. Μήνα</button>
+                    <button class="btn-clean" onclick="clearLogsRange('year')">Διαγραφή Τελ. Χρόνου</button>
+                    <button class="btn-clean" style="background-color:#e53e3e;" onclick="clearLogsRange('all')">🗑️ Διαγραφή ΟΛΩΝ των Logs</button>
+                </div>
             </div>
 
             <div class="card">
@@ -511,7 +536,7 @@
 
                 container.innerHTML = '';
                 const ordersArray = Object.values(ordersMap);
-                if (ordersArray.length === 0) { container.innerHTML = '<p style="color:#718096;">Το ιστορικό παραγγελιών είναι άδειο.</p>'; return; }
+                if (ordersArray.length === 0) { container.innerHTML = '<p style="color:#718096;">Το ιστορικό παραγγεριών είναι άδειο.</p>'; return; }
 
                 ordersArray.forEach(o => {
                     const div = document.createElement('div');
@@ -570,8 +595,10 @@
         }
 
 
-        // --- TAB 5: ANALYTICS ---
+        // --- TAB 5: ANALYTICS (ΑΝΑΒΑΘΜΙΣΜΕΝΟ) ---
         async function loadAnalytics() {
+            const range = document.getElementById('analytics-time-range').value;
+
             document.getElementById('stat-total-items').innerText = allProducts.length;
             document.getElementById('stat-low-items').innerText = allProducts.filter(p => p.stock <= p.min_required).length;
 
@@ -580,7 +607,8 @@
                 const pendingData = await resOrders.json();
                 document.getElementById('stat-pending-orders').innerText = new Set(pendingData.map(r => r.order_id)).size;
 
-                const resLogs = await fetch(`${API_BASE}/analytics/logs`);
+                // Τραβάμε τα logs στέλνοντας το χρονικό εύρος ως query parameter
+                const resLogs = await fetch(`${API_BASE}/analytics/logs?range=${range}`);
                 const logsData = await resLogs.json();
                 
                 const tbody = document.getElementById('analytics-logs-body');
@@ -601,13 +629,36 @@
                 const chartContainer = document.getElementById('analytics-chart-container');
                 chartContainer.innerHTML = '';
                 const entries = Object.entries(volumes);
-                if(entries.length === 0) { chartContainer.innerHTML = '<p style="color:#718096;">Δεν υπάρχουν δεδομένα κίνησης.</p>'; return; }
+                if(entries.length === 0) { chartContainer.innerHTML = '<p style="color:#718096;">Δεν υπάρχουν δεδομένα κίνησης για το επιλεγμένο διάστημα.</p>'; return; }
 
                 const maxVal = Math.max(...entries.map(e => e[1]));
                 entries.forEach(([name, val]) => {
                     const widthPct = maxVal > 0 ? (val / maxVal) * 100 : 0;
                     chartContainer.innerHTML += `<div style="margin-bottom: 15px;"><span style="font-size: 14px; font-weight: bold;">${name}</span><div class="chart-bar-container"><div class="chart-bar" style="width: ${widthPct}%"></div><div class="chart-label">${val} τεμ.</div></div></div>`;
                 });
+            } catch (err) { console.error(err); }
+        }
+
+        // Στοχευμένη Διαγραφή Logs
+        async function clearLogsRange(range) {
+            let message = "";
+            if (range === 'week') message = "τελευταίας εβδομάδας";
+            else if (range === 'month') message = "τελευταίου μήνα";
+            else if (range === 'year') message = "τελευταίου χρόνου";
+            else if (range === 'all') message = "ΟΛΩΝ των logs";
+
+            if (!confirm(`⚠️ Είστε σίγουροι ότι θέλετε να διαγράψετε οριστικά τα logs κινήσεων της ${message}; Τα τρέχοντα αποθέματα των προϊόντων δεν θα αλλάξουν.`)) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/analytics/logs/clear`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ range })
+                });
+                if (res.ok) {
+                    alert("Το επιλεγμένο ιστορικό κινήσεων διαγράφηκε!");
+                    loadAnalytics();
+                }
             } catch (err) { console.error(err); }
         }
 
