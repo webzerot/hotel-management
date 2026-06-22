@@ -26,13 +26,14 @@
         th { background-color: #edf2f7; color: #4a5568; }
         .alert-badge { background-color: #fed7d7; color: #9b2c2c; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .ok-badge { background-color: #c6f6d5; color: #22543d; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-        .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; border: none; }
+        .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; cursor: pointer; border: none; margin-right: 5px; }
         .btn-edit { background-color: #4299e1; color: white; }
         .btn-save { background-color: #48bb78; color: white; }
         .btn-delete { background-color: #e53e3e; color: white; font-weight: bold; padding: 8px 12px; border-radius: 5px; cursor: pointer; border: none; font-size: 13px; }
         .btn-delete:hover { background-color: #c53030; }
         .order-card { border: 1px solid #cbd5e0; padding: 15px; border-radius: 6px; margin-bottom: 15px; background: #f7fafc; }
         .manual-add-box { background: #ebf8ff; border: 1px solid #bee3f8; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 15px; align-items: flex-end; }
+        .danger-zone { margin-top: 50px; border-top: 2px dashed #e53e3e; padding-top: 20px; text-align: center; }
     </style>
 </head>
 <body>
@@ -50,7 +51,6 @@
 
     <div class="container">
         
-        <!-- TAB 1: ΑΠΟΘΗΚΗ -->
         <div id="tab-inventory" class="tab-content active">
             <div class="card">
                 <h2>Προσθήκη Νέου Είδους</h2>
@@ -92,7 +92,6 @@
             </div>
         </div>
 
-        <!-- TAB 2: ΝΕΑ ΠΑΡΑΓΓΕΛΙΑ -->
         <div id="tab-orders" class="tab-content">
             <div class="card">
                 <h2>Δημιουργία Παραγγελίας</h2>
@@ -118,13 +117,16 @@
             </div>
         </div>
 
-        <!-- TAB 3: ΠΑΡΑΛΑΒΕΣ & ΔΙΑΓΡΑΦΕΣ -->
         <div id="tab-receiving" class="tab-content">
             <div class="card">
                 <h2>Εκκρεμείς Παραγγελίες προς Παραλαβή / Διαγραφή</h2>
                 <p style="color: #718096;">Επιβεβαιώστε την παραλαβή ή διαγράψτε μια παραγγελία αν έγινε κατά λάθος.</p>
                 <div id="pending-orders-container"></div>
             </div>
+        </div>
+
+        <div class="danger-zone">
+            <button class="btn-delete" style="background-color: #e53e3e; font-size: 14px; padding: 10px 20px;" onclick="resetEntireDatabase()">⚠️ Ολικό Reset Αποθήκης (Διαγραφή Όλων)</button>
         </div>
 
     </div>
@@ -138,7 +140,7 @@
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
-            event.target.classList.add('active');
+            if(event && event.target.classList) event.target.classList.add('active');
         }
 
         // --- TAB 1: ΑΠΟΘΗΚΗ ---
@@ -175,6 +177,7 @@
                     <td>
                         <button class="btn-sm btn-edit view-mode-${p.id}" onclick="enableEdit(${p.id})">✏️ Edit</button>
                         <button class="btn-sm btn-save edit-mode-${p.id}" onclick="saveEdit(${p.id})" style="display:none;">💾 Save</button>
+                        <button class="btn-sm view-mode-${p.id}" style="background-color:#e53e3e; color:white; font-weight:bold;" onclick="deleteProduct(${p.id}, '${p.name}')">🗑️ Διαγραφή</button>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -202,6 +205,19 @@
                     body: JSON.stringify(updatedData)
                 });
                 if (res.ok) { loadInventory(); }
+            } catch (err) { console.error(err); }
+        }
+
+        async function deleteProduct(id, name) {
+            if (!confirm(`Είστε σίγουροι ότι θέλετε να διαγράψετε οριστικά το προϊόν "${name}" από την αποθήκη;`)) return;
+            try {
+                const res = await fetch(`${API_BASE}/products/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    alert("Το προϊόν διαγράφηκε επιτυχώς!");
+                    loadInventory();
+                } else {
+                    alert("Σφάλμα κατά τη διαγραφή του προϊόντος.");
+                }
             } catch (err) { console.error(err); }
         }
 
@@ -241,7 +257,7 @@
                         min_required: p.min_required,
                         supplier: p.supplier || 'Άγνωστος',
                         suggested_qty: p.suggested_qty || 5,
-                        qty: '' // Ξεκινάει τελείως κενό όπως ζήτησες!
+                        qty: ''
                     });
                 }
             });
@@ -267,7 +283,7 @@
                     min_required: p.min_required,
                     supplier: p.supplier || 'Άγνωστος',
                     suggested_qty: p.suggested_qty || 5,
-                    qty: '' // Κενό και για τη χειροκίνητη προσθήκη
+                    qty: ''
                 });
                 renderOrderGroups();
                 select.value = '';
@@ -430,6 +446,27 @@
                     loadPendingOrders();
                 } else {
                     alert("Σφάλμα κατά τη διαγραφή.");
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        // --- ΟΛΙΚΟ RESET ΒΑΣΗΣ ---
+        async function resetEntireDatabase() {
+            const firstConfirm = confirm("⚠️ ΠΡΟΣΟΧΗ! Αυτή η ενέργεια θα ΔΙΑΓΡΑΨΕΙ ΟΡΙΣΤΙΚΑ όλα τα προϊόντα, όλες τις παραγγελίες και όλο το ιστορικό από τη βάση δεδομένων. Είστε σίγουροι;");
+            if (!firstConfirm) return;
+
+            const secondConfirm = confirm("❌ ΣΙΓΟΥΡΑ; Δεν θα μπορείτε να επαναφέρετε τα δεδομένα μετά από αυτό!");
+            if (!secondConfirm) return;
+
+            try {
+                const res = await fetch(`${API_BASE}/reset-database`, { method: 'POST' });
+                if (res.ok) {
+                    alert("Η βάση δεδομένων καθαρίστηκε επιτυχώς! Όλα είναι πλέον κενά.");
+                    loadInventory();
+                    // Αν είμαστε στην καρτέλα παραγγελιών, ανανέωσέ την
+                    if(document.getElementById('tab-orders').classList.contains('active')) { initOrderPage(); }
+                } else {
+                    alert("Σφάλμα κατά το reset της βάσης.");
                 }
             } catch (err) { console.error(err); }
         }
