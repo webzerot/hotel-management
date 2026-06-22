@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Breakfast Inventory</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            body { background-color: white; color: black; }
+            nav, .no-print, button, input, .order-section { display: none !important; }
+            .print-only { display: block !important; }
+            .shadow-sm, .rounded-xl { shadow: none !important; border: none !important; }
+        }
+        .animate-pulse-red {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { color: #dc2626; }
+            50% { color: #7f1d1d; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen pb-10">
+
+    <nav class="bg-blue-600 text-white p-4 shadow-md mb-6 no-print">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold">Αποθήκη Πρωινού</h1>
+            <span class="text-sm bg-blue-700 px-3 py-1 rounded-full">Live Έλεγχος</span>
+        </div>
+    </nav>
+
+    <div class="hidden print-only text-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">ΛΙΣΤΑ ΠΑΡΑΓΓΕΛΙΑΣ ΠΡΩΙΝΟΥ</h1>
+        <p class="text-gray-500 text-sm">Ημερομηνία: <span id="printDate"></span></p>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4">
+        
+        <div class="bg-white p-5 rounded-xl shadow-sm mb-6 no-print">
+            <h2 class="text-lg font-semibold mb-3 text-gray-700">Προσθήκη Νέου Είδους</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <input id="newName" type="text" placeholder="Όνομα (π.χ. Ψωμί)" class="border p-2 rounded-lg w-full focus:outline-blue-500">
+                <input id="newStock" type="number" placeholder="Απόθεμα" class="border p-2 rounded-lg w-full focus:outline-blue-500">
+                <input id="newMin" type="number" placeholder="Όριο Παραγγελίας" class="border p-2 rounded-lg w-full focus:outline-blue-500">
+                <input id="newSupplier" type="text" placeholder="Προμηθευτής (π.χ. ΜΑΥΡΟΥΔΗΣ)" class="border p-2 rounded-lg w-full focus:outline-blue-500">
+            </div>
+            <button onclick="addProduct()" class="bg-green-500 hover:bg-green-600 text-white font-bold w-full mt-3 p-2 rounded-lg transition">Προσθήκη Προϊόντος +</button>
+        </div>
+
+        <div id="orderAlertContainer" class="bg-red-50 border-2 border-red-200 p-5 rounded-xl shadow-sm mb-6 hidden">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <div class="flex items-center gap-2 text-red-700 font-bold">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <h2 class="text-lg uppercase tracking-wide">⚠️ Πρέπει να παραγγείλεις:</h2>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-2 no-print w-full sm:w-auto">
+                    <input id="orderUser" type="text" placeholder="Το όνομά σου (π.χ. Κώστας)" class="border p-2 rounded-lg text-sm focus:outline-red-500">
+                    <button onclick="exportOrderList()" class="bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 rounded-lg shadow transition whitespace-nowrap">
+                        Εξαγωγή & Καταγραφή (PDF)
+                    </button>
+                </div>
+            </div>
+            <div id="shoppingListGrouped" class="space-y-4 border-t border-red-200 pt-3"></div>
+        </div>
+
+        <div id="pendingOrdersContainer" class="bg-white rounded-xl shadow-sm overflow-hidden mb-6 no-print hidden">
+            <div class="p-4 bg-orange-50 border-b border-orange-100">
+                <h2 class="text-lg font-semibold text-orange-800 flex items-center gap-2">⏳ Εκκρεμείς Παραγγελίες</h2>
+            </div>
+            <div id="pendingOrdersList" class="p-4 space-y-4 divide-y divide-gray-100"></div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden no-print">
+            <div class="p-4 bg-gray-50 border-b flex flex-wrap gap-2 items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-700">Αποθήκη</h2>
+                <div id="supplierFilters" class="flex flex-wrap gap-1"></div>
+            </div>
+            <div id="inventoryList" class="divide-y divide-gray-200">
+                <p class="p-4 text-center text-gray-500">Φόρτωση αποθήκης...</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let allProducts = [];
+        let currentFilter = 'ALL';
+
+        async function fetchInventory() {
+            try {
+                const response = await fetch('/api/products');
+                allProducts = await response.json();
+                renderFilters();
+                renderInventory();
+                fetchPendingOrders();
+            } catch (err) { console.error(err); }
+        }
+
+        function renderFilters() {
+            const filterContainer = document.getElementById('supplierFilters');
+            const suppliers = new Set();
+            allProducts.forEach(p => { if(p.supplier_name) suppliers.add(p.supplier_name.toUpperCase()); });
+            
+            let html = `<button onclick="setFilter('ALL')" class="px-3 py-1 rounded-full text-sm font-medium ${currentFilter === 'ALL' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">Όλα</button>`;
+            suppliers.forEach(sup => {
+                html += `<button onclick="setFilter('${sup}')" class="px-3 py-1 rounded-full text-sm font-medium ${currentFilter === sup ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}">${sup}</button>`;
+            });
+            if(allProducts.some(p => !p.supplier_name)) {
+                html += `<button onclick="setFilter('UNKNOWN')" class="px-3 py-1 rounded-full text-sm font-medium ${currentFilter === 'UNKNOWN' ? 'bg-yellow-600 text-white' : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'}">Αγνωστοι</button>`;
+            }
+            filterContainer.innerHTML = html;
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            renderFilters();
+            renderInventory();
+        }
+
+        function renderInventory() {
+            const listContainer = document.getElementById('inventoryList');
+            const shoppingGrouped = document.getElementById('shoppingListGrouped');
+            const orderAlertContainer = document.getElementById('orderAlertContainer');
+            
+            listContainer.innerHTML = '';
+            shoppingGrouped.innerHTML = '';
+            let orderGroups = {};
+
+            allProducts.forEach(product => {
+                const isLow = product.current_stock <= product.min_required;
+                const supKey = product.supplier_name ? product.supplier_name.toUpperCase() : 'ΑΓΝΩΣΤΟΣ ΠΡΟΜΗΘΕΥΤΗΣ';
+
+                if (isLow) {
+                    const defQty = (product.min_required - product.current_stock) + 20;
+                    if(!orderGroups[supKey]) orderGroups[supKey] = [];
+                    // Εδώ το νούμερο μπαίνει σε input με id για να το διαβάζουμε αν το αλλάξεις
+                    orderGroups[supKey].push({
+                        id: product.id,
+                        name: product.name,
+                        stock: product.current_stock,
+                        min: product.min_required,
+                        defQty: defQty
+                    });
+                }
+
+                if (currentFilter !== 'ALL') {
+                    if (currentFilter === 'UNKNOWN' && product.supplier_name) return;
+                    if (currentFilter !== 'UNKNOWN' && (!product.supplier_name || product.supplier_name.toUpperCase() !== currentFilter)) return;
+                }
+
+                const bgAlert = isLow ? 'bg-red-100/70 border-l-4 border-red-500' : '';
+                const stockColor = isLow ? 'animate-pulse-red text-red-600 font-black text-lg' : 'text-green-600 font-bold';
+
+                listContainer.innerHTML += `
+                    <div class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${bgAlert}">
+                        <div class="w-full sm:w-auto">
+                            <div id="view-${product.id}" class="flex items-center justify-between sm:justify-start gap-4">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-800">${product.name}</h3>
+                                    <p class="text-sm text-gray-500">Απόθεμα: <span class="${stockColor}">${product.current_stock} τεμ.</span> <span class="text-xs text-gray-400">(Όριο: ${product.min_required})</span></p>
+                                    <p class="text-xs text-blue-600 font-medium">🚚 Προμηθευτής: ${product.supplier_name || '❌ Δεν έχει οριστεί'}</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="enableEdit(${product.id}, '${product.name}', ${product.min_required}, '${product.supplier_name || ''}')" class="text-gray-400 hover:text-blue-500 p-1 rounded">✏️</button>
+                                    <button onclick="deleteProduct(${product.id}, '${product.name}')" class="text-gray-400 hover:text-red-500 p-1 rounded">🗑️</button>
+                                </div>
+                            </div>
+                            <div id="edit-${product.id}" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-3 rounded-lg border mt-2 shadow-inner">
+                                <input id="edit-name-${product.id}" type="text" class="border p-1 rounded text-sm">
+                                <input id="edit-min-${product.id}" type="number" class="border p-1 rounded text-sm">
+                                <input id="edit-sup-${product.id}" type="text" class="border p-1 rounded text-sm">
+                                <div class="sm:col-span-3 flex gap-2 justify-end mt-1">
+                                    <button onclick="disableEdit(${product.id})" class="text-xs bg-gray-300 px-2 py-1 rounded">Ακύρωση</button>
+                                    <button onclick="saveEdit(${product.id})" class="text-xs bg-blue-600 text-white px-3 py-1 rounded font-bold">Αποθήκευση</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="actions-${product.id}" class="flex items-center gap-2 self-end sm:self-center">
+                            <button onclick="updateStock(${product.id}, -5, 'ΚΑΤΑΝΑΛΩΣΗ')" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-3 py-2 rounded-lg text-sm">-5</button>
+                            <button onclick="updateStock(${product.id}, -1, 'ΚΑΤΑΝΑΛΩΣΗ')" class="bg-red-500 hover:bg-red-600 text-white font-bold px-4 py-2 rounded-lg">-1</button>
+                            <button onclick="updateStock(${product.id}, 1, 'ΠΑΡΑΛΑΒΗ')" class="bg-green-500 hover:bg-green-600 text-white font-bold px-4 py-2 rounded-lg">+1</button>
+                            <button onclick="updateStock(${product.id}, 10, 'ΠΑΡΑΛΑΒΗ')" class="bg-green-100 hover:bg-green-200 text-green-700 font-bold px-3 py-2 rounded-lg text-sm">+10</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if (Object.keys(orderGroups).length > 0) {
+                orderAlertContainer.classList.remove('hidden');
+                for (let supplier in orderGroups) {
+                    let itemsHtml = orderGroups[supplier].map(prod => `
+                        <li class="flex flex-wrap items-center justify-between gap-2 py-1 border-b border-red-100 last:border-0">
+                            <span class="font-medium text-red-950">📦 ${prod.name} <span class="text-xs text-red-600">(Έχεις: ${prod.stock})</span></span>
+                            <div class="flex items-center gap-1 no-print">
+                                <span class="text-xs text-gray-500">Ποσότητα:</span>
+                                <input id="req-qty-${prod.id}" type="number" value="${prod.defQty}" data-name="${prod.name}" class="order-input border w-16 p-1 rounded text-center font-bold text-gray-800">
+                            </div>
+                            <span class="hidden print-only font-bold">— Ποσότητα: ${prod.defQty} τεμ.</span>
+                        </li>
+                    `).join('');
+                    
+                    shoppingGrouped.innerHTML += `
+                        <div class="bg-white p-4 rounded-lg border border-red-100 shadow-sm">
+                            <h3 class="font-bold text-red-800 border-b border-red-200 pb-1 mb-2 tracking-wide">🚚 ΠΡΟΜΗΘΕΥΤΗΣ: ${supplier}</h3>
+                            <ul class="space-y-1">${itemsHtml}</ul>
+                        </div>
+                    `;
+                }
+            } else { orderAlertContainer.classList.add('hidden'); }
+        }
+
+        function enableEdit(id, name, min, sup) {
+            document.getElementById(`view-${id}`).classList.add('hidden');
+            document.getElementById(`actions-${id}`).classList.add('hidden');
+            document.getElementById(`edit-${id}`).classList.remove('hidden');
+            document.getElementById(`edit-name-${id}`).value = name;
+            document.getElementById(`edit-min-${id}`).value = min;
+            document.getElementById(`edit-sup-${id}`).value = sup;
+        }
+        function disableEdit(id) {
+            document.getElementById(`view-${id}`).classList.remove('hidden');
+            document.getElementById(`actions-${id}`).classList.remove('hidden');
+            document.getElementById(`edit-${id}`).classList.add('hidden');
+        }
+        async function saveEdit(id) {
+            const name = document.getElementById(`edit-name-${id}`).value;
+            const min_required = parseInt(document.getElementById(`edit-min-${id}`).value) || 5;
+            const supplier_name = document.getElementById(`edit-sup-${id}`).value;
+            await fetch(`/api/products/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, min_required, supplier_name })
+            });
+            fetchInventory();
+        }
+
+        // Εξαγωγή Παραγγελίας με το Όνομα αυτού που παραγγέλνει
+        async function exportOrderList() {
+            const ordered_by = document.getElementById('orderUser').value;
+            if(!ordered_by) return alert('Παρακαλώ γράψε το όνομά σου πριν κάνεις την παραγγελία!');
+
+            let itemsToOrder = [];
+            const inputs = document.querySelectorAll('.order-input');
+            inputs.forEach(input => {
+                const id = input.id.replace('req-qty-', '');
+                itemsToOrder.push({
+                    product_id: parseInt(id),
+                    name: input.getAttribute('data-name'),
+                    qty_needed: parseInt(input.value) || 0
+                });
+            });
+
+            if (itemsToOrder.length === 0) return;
+
+            await fetch('/api/orders/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: itemsToOrder, ordered_by })
+            });
+
+            document.getElementById('printDate').innerText = new Date().toLocaleDateString('el-GR', {day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'});
+            window.print();
+            document.getElementById('orderUser').value = '';
+            setTimeout(() => { fetchInventory(); }, 1000);
+        }
+
+        async function fetchPendingOrders() {
+            try {
+                const response = await fetch('/api/orders/pending');
+                const orders = await response.json();
+                const container = document.getElementById('pendingOrdersContainer');
+                const list = document.getElementById('pendingOrdersList');
+                list.innerHTML = '';
+                
+                if (orders.length === 0) { container.classList.add('hidden'); return; }
+                container.classList.remove('hidden');
+                
+                orders.forEach(order => {
+                    const date = new Date(order.created_at).toLocaleDateString('el-GR', {day: 'numeric', month: 'short', hour: '2-digit', minute:'2-digit'});
+                    
+                    let itemsFormHtml = order.items.map(i => `
+                        <div class="flex items-center justify-between gap-4 py-1 border-b border-gray-100 last:border-0">
+                            <span class="text-sm font-medium text-gray-700">📦 ${i.name} <span class="text-xs text-gray-400">(Ζητήθηκαν: ${i.qty_needed})</span></span>
+                            <div class="flex items-center gap-1">
+                                <span class="text-xs text-gray-400">Ήρθαν:</span>
+                                <input type="number" value="${i.qty_needed}" id="rec-qty-${order.id}-${i.product_id}" data-pid="${i.product_id}" class="receive-input border w-16 p-1 rounded text-center text-sm font-bold bg-gray-50">
+                            </div>
+                        </div>
+                    `).join('');
+
+                    list.innerHTML += `
+                        <div class="bg-orange-50/20 p-4 rounded-xl border border-orange-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div class="w-full md:w-2/3">
+                                <p class="text-xs text-gray-500 font-bold">Παραγγελία #ID-${order.id} — Από: ${order.ordered_by} (${date})</p>
+                                <div class="mt-2 bg-white p-3 rounded-lg border shadow-inner space-y-1">${itemsFormHtml}</div>
+                            </div>
+                            <button onclick="receiveOrder(${order.id})" class="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-3 rounded-xl shadow transition self-end md:self-center whitespace-nowrap">Παραλήφθηκε ✅</button>
+                        </div>
+                    `;
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        // Παραλαβή (Χωρίς όνομα χρήστη, ελεύθερη επιβεβαίωση)
+        async function receiveOrder(orderId) {
+            const inputs = document.querySelectorAll(`[id^="rec-qty-${orderId}-"]`);
+            let received_items = [];
+            
+            inputs.forEach(input => {
+                received_items.push({
+                    product_id: parseInt(input.getAttribute('data-pid')),
+                    qty_received: parseInt(input.value) || 0
+                });
+            });
+
+            await fetch('/api/orders/receive', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: orderId, received_items })
+            });
+            fetchInventory();
+        }
+
+        async function updateStock(id, amount, reason) {
+            await fetch('/api/products/update-stock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product_id: id, amount, reason })
+            });
+            fetchInventory();
+        }
+
+        async function addProduct() {
+            const name = document.getElementById('newName').value;
+            const current_stock = parseInt(document.getElementById('newStock').value) || 0;
+            const min_required = parseInt(document.getElementById('newMin').value) || 5;
+            const supplier_name = document.getElementById('newSupplier').value;
+            if(!name) return alert('Δώσε όνομα!');
+            await fetch('/api/products/add', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, current_stock, min_required, supplier_name })
+            });
+            document.getElementById('newName').value = '';
+            document.getElementById('newStock').value = '';
+            document.getElementById('newMin').value = '';
+            document.getElementById('newSupplier').value = '';
+            fetchInventory();
+        }
+
+        async function deleteProduct(id, name) {
+            if (confirm(`Διαγραφή του "${name}";`)) {
+                await fetch(`/api/products/${id}`, { method: 'DELETE' });
+                fetchInventory();
+            }
+        }
+
+        fetchInventory();
+    </script>
+</body>
+</html>
