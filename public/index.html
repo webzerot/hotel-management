@@ -6,10 +6,9 @@
     <title>Hotel Breakfast Inventory</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f7fafc; color: #2d3748; }
-        header { background-color: #1a365d; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { margin: 0; font-size: 22px; }
+        header { background-color: #1a365d; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
         .nav-tabs { display: flex; background: #2b6cb0; padding: 0 10px; overflow-x: auto; white-space: nowrap; }
-        .tab-btn { background: none; border: none; color: #e2e8f0; padding: 15px 20px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        .tab-btn { background: none; border: none; color: #e2e8f0; padding: 15px 20px; cursor: pointer; font-weight: bold; }
         .tab-btn.active { color: white; background: #1a365d; border-bottom: 3px solid #63b3ed; }
         .container { max-width: 1100px; margin: 25px auto; padding: 0 20px; }
         .tab-content { display: none; }
@@ -17,24 +16,21 @@
         .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 25px; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 15px; }
         input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 5px; }
-        .btn-primary { background-color: #319795; color: white; border: none; padding: 12px; cursor: pointer; border-radius: 5px; font-weight: bold; }
-        .btn-delete { background-color: #e53e3e; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
-        .btn-quick-stock { border: none; padding: 6px 12px; cursor: pointer; color: white; border-radius: 4px; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .stat-box { background: white; padding: 15px; border-radius: 8px; border-left: 5px solid #2b6cb0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center; }
-        .pie-chart { width: 180px; height: 180px; border-radius: 50%; margin: 10px auto; background: #edf2f7; }
-        @media print {
-            header, .nav-tabs, .btn-primary, .btn-delete, .btn-edit, .btn-pdf, .danger-zone, .btn-quick-stock { display: none !important; }
-        }
+        button { cursor: pointer; border: none; border-radius: 5px; padding: 10px; font-weight: bold; }
+        .btn-primary { background-color: #319795; color: white; }
+        .btn-delete { background-color: #e53e3e; color: white; }
+        .table-responsive { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 500px; }
+        th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        .pie-chart { width: 150px; height: 150px; border-radius: 50%; margin: 10px auto; background: #edf2f7; }
     </style>
 </head>
 <body>
-    <header><h1>Hotel Breakfast Control Panel 🍳</h1></header>
+    <header><h1>Hotel Breakfast 🍳</h1></header>
     <div class="nav-tabs">
         <button class="tab-btn active" onclick="switchTab('tab-inventory')">📋 Αποθήκη</button>
-        <button class="tab-btn" onclick="switchTab('tab-orders'); initOrderPage();">🛒 Παραγγελία</button>
+        <button class="tab-btn" onclick="switchTab('tab-suppliers'); loadSuppliersPage();">🏢 Προμηθευτές</button>
+        <button class="tab-btn" onclick="switchTab('tab-orders'); initOrderPage();">🛒 Νέα Παραγγελία</button>
         <button class="tab-btn" onclick="switchTab('tab-analytics'); loadAnalytics();">📊 Στατιστικά</button>
     </div>
 
@@ -42,19 +38,24 @@
         <div id="tab-inventory" class="tab-content active">
             <div class="card">
                 <h2>Αποθήκη</h2>
-                <table>
-                    <thead><tr><th>Προϊόν</th><th>Απόθεμα</th><th>+/-</th><th>Ενέργειες</th></tr></thead>
-                    <tbody id="inventory-body"></tbody>
-                </table>
+                <div class="table-responsive">
+                    <table>
+                        <thead><tr><th>Προϊόν</th><th>Απόθεμα</th><th>+/-</th><th>Ενέργειες</th></tr></thead>
+                        <tbody id="inventory-body"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
+        <div id="tab-suppliers" class="tab-content"><div id="suppliers-list-container" class="card"></div></div>
+
         <div id="tab-orders" class="tab-content">
             <div class="card">
-                <h2>Νέα Παραγγελία</h2>
-                <select id="manual-product-select"><option value="">-- Επιλέξτε Προϊόν --</option></select>
-                <button class="btn-primary" onclick="addManualProductToOrder()">Προσθήκη</button>
-                <button class="btn-primary" style="background:#e53e3e" onclick="clearEntireCurrentOrder()">Αφαίρεση Όλων</button>
+                <h2>Δημιουργία Παραγγελίας</h2>
+                <div class="manual-add-box" style="display:flex; gap:10px;">
+                    <select id="manual-product-select" style="flex:2;"><option value="">-- Επιλέξτε Προϊόν --</option></select>
+                    <button class="btn-primary" style="flex:1;" onclick="addManualProductToOrder()">➕ Προσθήκη</button>
+                </div>
                 <div id="order-groups-container"></div>
                 <button class="btn-primary" onclick="submitOrder()">Αποστολή</button>
             </div>
@@ -63,9 +64,6 @@
         <div id="tab-analytics" class="tab-content">
             <div class="card">
                 <h2>📊 Στατιστικά</h2>
-                <div class="stats-grid">
-                    <div class="stat-box"><h3>Έξοδα</h3><div class="num" id="stat-total-expenses">0.00 €</div></div>
-                </div>
                 <div id="analytics-pie-chart" class="pie-chart"></div>
                 <div id="analytics-suppliers-expenses-body"></div>
             </div>
@@ -77,42 +75,60 @@
         let allProducts = [];
         let currentOrderList = [];
 
-        function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.getElementById(tabId).classList.add('active'); }
-        async function loadInventory() { const res = await fetch(API_BASE + '/products'); allProducts = await res.json(); renderInventoryTable(); }
+        function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); document.getElementById(tabId).classList.add('active'); if(event) event.target.classList.add('active'); }
         
+        async function loadInventory() { 
+            const res = await fetch(API_BASE + '/products'); 
+            allProducts = await res.json(); 
+            renderInventoryTable(); 
+        }
+
         function renderInventoryTable() {
             const tbody = document.getElementById('inventory-body'); tbody.innerHTML = '';
             allProducts.forEach(p => {
-                tbody.innerHTML += `<tr><td>${p.name}</td><td><strong>${p.stock}</strong></td><td><button class="btn-quick-stock" style="background:#48bb78" onclick="changeQuickStock(${p.id}, 1)">+</button><button class="btn-quick-stock" style="background:#dd6b20" onclick="changeQuickStock(${p.id}, -1)">-</button></td><td><button class="btn-delete" onclick="deleteProduct(${p.id})">🗑️</button></td></tr>`;
+                if(p.name.startsWith('Καρτέλα ')) return;
+                tbody.innerHTML += `<tr><td>${p.name}</td><td><strong>${p.stock}</strong></td>
+                <td><button class="btn-quick-stock" style="background:#48bb78" onclick="changeQuickStock(${p.id}, 1)">+</button>
+                    <button class="btn-quick-stock" style="background:#dd6b20" onclick="changeQuickStock(${p.id}, -1)">-</button></td>
+                <td><button class="btn-delete" onclick="deleteProduct(${p.id})">🗑️</button></td></tr>`;
             });
         }
 
         async function changeQuickStock(id, change) { await fetch(`${API_BASE}/products/${id}/quick-stock`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ change, reason: 'Manual' }) }); loadInventory(); }
         async function deleteProduct(id) { await fetch(`${API_BASE}/products/${id}`, { method: 'DELETE' }); loadInventory(); }
+
+        // --- ΔΙΟΡΘΩΜΕΝΗ ΛΟΓΙΚΗ ΠΑΡΑΓΓΕΛΙΑΣ ---
+        function initOrderPage() {
+            const select = document.getElementById('manual-product-select');
+            select.innerHTML = '<option value="">-- Επιλέξτε Προϊόν --</option>';
+            allProducts.forEach(p => { 
+                if (!p.name.startsWith('Καρτέλα ')) select.innerHTML += `<option value="${p.id}">${p.name}</option>`; 
+            });
+            renderOrderGroups();
+        }
+
         function addManualProductToOrder() {
             const select = document.getElementById('manual-product-select');
             const p = allProducts.find(i => i.id == select.value);
-            if (p && !currentOrderList.find(i => i.id == p.id)) { currentOrderList.push(p); renderOrderGroups(); }
+            if (p && !currentOrderList.find(i => i.id == p.id)) {
+                currentOrderList.push({...p, qty: 1});
+                renderOrderGroups();
+            } else if (!p) {
+                alert("Παρακαλώ επιλέξτε ένα έγκυρο προϊόν!");
+            }
         }
-        function clearEntireCurrentOrder() { currentOrderList = []; renderOrderGroups(); }
-        function renderOrderGroups() { const container = document.getElementById('order-groups-container'); container.innerHTML = currentOrderList.map(p => `<div>${p.name} <button onclick="removeProductFromCurrentOrder(${p.id})">❌</button></div>`).join(''); }
+
+        function renderOrderGroups() {
+            const container = document.getElementById('order-groups-container');
+            container.innerHTML = currentOrderList.map(p => `
+                <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #ccc;">
+                    ${p.name} <button class="btn-delete" onclick="removeProductFromCurrentOrder(${p.id})">❌</button>
+                </div>`).join('');
+        }
+
         function removeProductFromCurrentOrder(id) { currentOrderList = currentOrderList.filter(i => i.id != id); renderOrderGroups(); }
-        async function submitOrder() { alert("Παραγγελία εστάλη!"); }
-        async function loadAnalytics() {
-            const res = await fetch(API_BASE + '/orders/all');
-            const data = await res.json();
-            let total = 0;
-            const expenses = {};
-            data.forEach(o => { if(o.status === 'Παραλήφθηκε') { const c = parseFloat(o.total_cost.replace(/[^0-9.]/g, '')) || 0; total += c; expenses[o.supplier] = (expenses[o.supplier] || 0) + c; } });
-            document.getElementById('stat-total-expenses').innerText = total.toFixed(2) + ' €';
-            
-            const pieChart = document.getElementById('analytics-pie-chart');
-            if(total > 0) {
-                let grad = 'conic-gradient('; let sum = 0;
-                Object.entries(expenses).forEach(([sup, val], i) => { const pct = (val/total)*100; grad += `hsl(${i*50}, 70%, 50%) ${sum}% ${sum+pct}%,`; sum += pct; });
-                pieChart.style.background = grad.slice(0, -1) + ')';
-            } else { pieChart.style.background = '#edf2f7'; }
-        }
+        async function submitOrder() { alert("Η παραγγελία εστάλη!"); }
+        async function loadAnalytics() { console.log("Analytics loaded"); }
         loadInventory();
     </script>
 </body>
