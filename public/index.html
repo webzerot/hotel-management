@@ -114,7 +114,6 @@
     </header>
 
     <div class="container">
-        <!-- ΦΟΡΜΑ ΠΡΟΣΘΗΚΗΣ -->
         <div class="card">
             <h2>Προσθήκη Νέου Είδους</h2>
             <form id="productForm">
@@ -128,7 +127,6 @@
             </form>
         </div>
 
-        <!-- ΠΙΝΑΚΑΣ ΑΠΟΘΗΚΗΣ -->
         <div class="card">
             <h2>Αποθήκη</h2>
             <div id="loading" class="loading">Φόρτωση αποθήκης...</div>
@@ -143,7 +141,6 @@
                     </tr>
                 </thead>
                 <tbody id="productsBody">
-                    <!-- Εδώ θα μπουν τα δεδομένα δυναμικά -->
                 </tbody>
             </table>
         </div>
@@ -152,12 +149,10 @@
     <script>
         const API_URL = 'https://hotel-management-vk0r.onrender.com/api/products';
 
-        // Συναρτήση για τη λήψη των προϊόντων από το back-end
         async function fetchProducts() {
             try {
                 const response = await fetch(API_URL);
-                if (!response.ok) throw new Error('Σφάλμα κατά τη λήψη δεδομένων');
-                
+                if (!response.ok) throw new Error('Σφάλμα λήψης');
                 const products = await response.json();
                 
                 document.getElementById('loading').style.display = 'none';
@@ -168,7 +163,7 @@
 
                 products.forEach(p => {
                     const needsOrder = p.stock <= p.min_required;
-                    const statusCell = needsOrder ? '<span class="alert">Χαμηλό Απόθεμα</span>' : '<span style="color:#2f855a; font-weight:bold;">OK</span>';
+                    const statusCell = needsOrder ? '<span class="alert">Xαμηλό Απόθεμα</span>' : '<span style="color:#2f855a; font-weight:bold;">OK</span>';
                     
                     const row = `
                         <tr>
@@ -187,10 +182,8 @@
             }
         }
 
-        // Υποβολή της φόρμας για νέο προϊόν
         document.getElementById('productForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const newProduct = {
                 name: document.getElementById('name').value,
                 stock: parseInt(document.getElementById('stock').value),
@@ -207,9 +200,9 @@
 
                 if (response.ok) {
                     document.getElementById('productForm').reset();
-                    fetchProducts(); // Ανανέωση του πίνακα
+                    fetchProducts();
                 } else {
-                    alert('Σφάλμα κατά την αποθήκευση του προϊόντος.');
+                    alert('Σφάλμα κατά την αποθήκευση.');
                 }
             } catch (err) {
                 console.error(err);
@@ -217,7 +210,6 @@
             }
         });
 
-        // Φόρτωση των προϊόντων κατά το άνοιγμα της σελίδας
         fetchProducts();
     </script>
 </body>
