@@ -9,8 +9,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const pool = new Pool({
-  host: 'aws-0-eu-central-1.pooler.supabase.com',
-  port: 6543,
+  host: 'aws-0-eu-west-1.pooler.supabase.com',  // ← Ireland, το σωστό
+  port: 5432,                                     // ← Session pooler
   user: 'postgres.mzdecptbtpgkzpbplwjp',
   password: 'hotel-management1',
   database: 'postgres',
