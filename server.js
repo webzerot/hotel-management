@@ -116,7 +116,7 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-// 6. GET: Λίστα Εκκρεμών Παραγγελιών (Μόνο αυτές που εκκρεμούν)
+// 6. GET: Λίστα Εκκρεμών Παραγγελιών
 app.get('/api/orders/pending', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -135,7 +135,7 @@ app.get('/api/orders/pending', async (req, res) => {
   }
 });
 
-// 7. GET: ΟΛΟ το Γενικό Ιστορικό Παραγγελιών (ΝΕΟ)
+// 7. GET: ΟΛΟ το Γενικό Ιστορικό Παραγγελιών
 app.get('/api/orders/all', async (req, res) => {
   try {
     const result = await pool.query(`
@@ -192,7 +192,7 @@ app.delete('/api/orders/:id', async (req, res) => {
   }
 });
 
-// 10. DELETE: Μαζική διαγραφή ΟΛΩΝ των παραγγελιών (ΝΕΟ)
+// 10. DELETE: Μαζική διαγραφή ΟΛΩΝ των παραγγελιών
 app.delete('/api/orders/all/clear', async (req, res) => {
   try {
     await pool.query('TRUNCATE TABLE orders CASCADE');
@@ -203,15 +203,23 @@ app.delete('/api/orders/all/clear', async (req, res) => {
   }
 });
 
-// 11. GET: Ιστορικό Κινήσεων για τα Analytics
+// 11. GET: Ιστορικό Κινήσεων για τα Analytics με ΦΙΛΤΡΟ ΧΡΟΝΟΥ (ΑΝΑΒΑΘΜΙΣΗ)
 app.get('/api/analytics/logs', async (req, res) => {
+  const { range } = req.query; // week, month, year, all
+  let timeCondition = "";
+
+  if (range === 'week') timeCondition = "WHERE sl.changed_at >= NOW() - INTERVAL '7 days'";
+  else if (range === 'month') timeCondition = "WHERE sl.changed_at >= NOW() - INTERVAL '30 days'";
+  else if (range === 'year') timeCondition = "WHERE sl.changed_at >= NOW() - INTERVAL '365 days'";
+
   try {
     const result = await pool.query(`
       SELECT sl.id, p.name as product_name, sl.change_amount, sl.reason, sl.changed_at 
       FROM stock_log sl
       JOIN products p ON sl.product_id = p.id
+      ${timeCondition}
       ORDER BY sl.changed_at DESC 
-      LIMIT 100
+      LIMIT 200
     `);
     res.json(result.rows);
   } catch (err) {
@@ -220,7 +228,26 @@ app.get('/api/analytics/logs', async (req, res) => {
   }
 });
 
-// 12. POST: ΟΛΙΚΟ RESET ΒΑΣΗΣ ΔΕΔΟΜΕΝΩΝ
+// 12. DELETE: Στοχευμένη Διαγραφή Logs / Ιστορικού Κίνησης (ΝΕΟ)
+app.delete('/api/analytics/logs/clear', async (req, res) => {
+  const { range } = req.body; // 'week', 'month', 'year', 'all'
+  let query = "";
+
+  if (range === 'week') query = "DELETE FROM stock_log WHERE changed_at >= NOW() - INTERVAL '7 days'";
+  else if (range === 'month') query = "DELETE FROM stock_log WHERE changed_at >= NOW() - INTERVAL '30 days'";
+  else if (range === 'year') query = "DELETE FROM stock_log WHERE changed_at >= NOW() - INTERVAL '365 days'";
+  else if (range === 'all') query = "TRUNCATE TABLE stock_log RESTART IDENTITY CASCADE";
+
+  try {
+    await pool.query(query);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Clear logs error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
+  }
+});
+
+// 13. POST: ΟΛΙΚΟ RESET ΒΑΣΗΣ ΔΕΔΟΜΕΝΩΝ
 app.post('/api/reset-database', async (req, res) => {
   try {
     await pool.query('TRUNCATE TABLE order_items, orders, stock_log, products RESTART IDENTITY CASCADE');
