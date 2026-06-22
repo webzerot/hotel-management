@@ -7,33 +7,37 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Σερβίρισμα των στατικών αρχείων από τον φάκελο public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Απευθείας σύνδεση στην IPv4 διεύθυνση του Supabase (Φρανκφούρτη) για παράκαμψη όλων των DNS/IPv6 bugs
+// Χρησιμοποιούμε το Transaction Pooler (port 6543) με connectionString
+// ώστε το sslmode=require να μεταφερθεί σωστά στον driver
 const pool = new Pool({
-  host: '54.93.47.168', // Η επίσημη IPv4 διεύθυνση του aws-0-eu-central-1.pooler.supabase.com
-  port: 6543,
-  user: 'postgres.mzdecptbtpgkzpbplwjp', // Το tenant ID σου
-  password: 'hotel-management1',
-  database: 'postgres',
-  ssl: {
-    rejectUnauthorized: false
+  connectionString: 'postgresql://postgres.mzdecptbtpgkzpbplwjp:hotel-management1@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require',
+  max: 5,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
+
+// Test σύνδεσης κατά την εκκίνηση — βλέπεις στα Render logs αν δουλεύει
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('❌ Αποτυχία σύνδεσης με Supabase:', err.message);
+  } else {
+    console.log('✅ Σύνδεση με Supabase επιτυχής!');
+    release();
   }
 });
 
-// GET: Επιστροφή όλων των προϊόντων
 app.get('/api/products', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM products ORDER BY id ASC');
     res.json(result.rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.error('Query error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
   }
 });
 
-// POST: Προσθήκη νέου προϊόντος
 app.post('/api/products', async (req, res) => {
   const { name, stock, min_required, supplier } = req.body;
   try {
@@ -43,12 +47,11 @@ app.post('/api/products', async (req, res) => {
     );
     res.json(result.rows[0]);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
+    console.error('Insert error:', err.message);
+    res.status(500).json({ error: 'Database error', details: err.message });
   }
 });
 
-// Για οποιοδήποτε άλλο route, στείλε το index.html από τον φάκελο public
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
