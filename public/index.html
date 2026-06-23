@@ -234,7 +234,32 @@
         function switchTab(tabId) { document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active')); document.getElementById(tabId).classList.add('active'); if(event && event.target && event.target.classList) event.target.classList.add('active'); }
         async function loadInventory() { try { const res = await fetch(API_BASE + '/products'); allProducts = await res.json(); renderInventoryTable(); updateSuppliersDatalist(); } catch (err) { console.error(err); } }
         function updateSuppliersDatalist() { const datalist = document.getElementById('suppliers-datalist'); datalist.innerHTML = ''; const sups = []; allProducts.forEach(p => { if(p.supplier && p.supplier !== 'Άγνωστος' && !sups.includes(p.supplier)) sups.push(p.supplier); }); sups.forEach(s => { datalist.innerHTML += '<option value="' + s + '">'; }); }
-        function renderInventoryTable() { const tbody = document.getElementById('inventory-body'); const supplierFilter = document.getElementById('filter-supplier').value.toLowerCase(); const statusFilter = document.getElementById('filter-status').value; tbody.innerHTML = ''; allProducts.forEach(p => { if (p.name.startsWith('Καρτέλα ')) return; const isLow = p.stock <= p.min_required; if (statusFilter === 'low' && !isLow) return; if (supplierFilter && !p.supplier.toLowerCase().includes(supplierFilter)) return; tbody.innerHTML += `<tr id="row-${p.id}"><td><span class="view-mode-${p.id}"><strong>${p.name}</strong></span><input type="text" class="edit-mode-${p.id}" value="${p.name}" style="display:none; max-width:150px;"></td><td><strong id="stock-val-${p.id}">${p.stock}</strong></td><td><button class="btn-quick-stock" style="background-color:#48bb78;" onclick="changeQuickStock(${p.id}, 1, 'Συμπλήρωση')">+</button><button class="btn-quick-stock" style="background-color:#dd6b20;" onclick="changeQuickStock(${p.id}, -1, 'Κατανάλωση στο Πρωινό')">-</button></td><td><span class="view-mode-${p.id}">${p.min_required}</span><input type="number" class="edit-mode-${p.id}" value="${p.min_required}" style="display:none; max-width:80px;"></td><td><span class="view-mode-${p.id}">${p.suggested_qty || 5}</span><input type="number" class="edit-mode-${p.id}" value="${p.suggested_qty || 5}" style="display:none; max-width:80px;"></td><td><span class="view-mode-${p.id}">${p.supplier}</span><input type="text" class="edit-mode-${p.id}" value="${p.supplier}" style="display:none; max-width:120px;"></td><td>${isLow ? '<span class="alert-badge">Χαμηλό</span>' : '<span class="ok-badge">OK</span>'}</td><td><button class="btn-sm btn-edit view-mode-${p.id}" onclick="enableEdit(${p.id})">✏️</button><button class="btn-sm btn-save edit-mode-${p.id}" onclick="saveEdit(${p.id})" style="display:none;">💾</button><button class="btn-sm view-mode-${p.id}" style="background-color:#e53e3e; color:white;" onclick="deleteProduct(${p.id}, '${p.name}')">🗑️</button></td></tr>`; }); }
+        function renderInventoryTable() { 
+    const tbody = document.getElementById('inventory-body'); 
+    const supplierFilter = document.getElementById('filter-supplier').value.toLowerCase(); 
+    const statusFilter = document.getElementById('filter-status').value; 
+    tbody.innerHTML = ''; 
+    allProducts.forEach(p => { 
+        if (p.name.startsWith('Καρτέλα ')) return; 
+        const isLow = p.stock <= p.min_required; 
+        if (statusFilter === 'low' && !isLow) return; 
+        if (supplierFilter && !p.supplier.toLowerCase().includes(supplierFilter)) return; 
+        
+        tbody.innerHTML += `<tr id="row-${p.id}">
+            <td><span class="view-mode-${p.id}"><strong>${p.name}</strong></span><input type="text" class="edit-mode-${p.id}" value="${p.name}" style="display:none; max-width:150px;"></td>
+            <td>
+                <span class="view-mode-${p.id}"><strong id="stock-val-${p.id}">${p.stock}</strong></span>
+                <input type="number" class="edit-mode-${p.id}" value="${p.stock}" style="display:none; max-width:60px;">
+            </td>
+            <td><button class="btn-quick-stock" style="background-color:#48bb78;" onclick="changeQuickStock(${p.id}, 1, 'Συμπλήρωση')">+</button><button class="btn-quick-stock" style="background-color:#dd6b20;" onclick="changeQuickStock(${p.id}, -1, 'Κατανάλωση στο Πρωινό')">-</button></td>
+            <td><span class="view-mode-${p.id}">${p.min_required}</span><input type="number" class="edit-mode-${p.id}" value="${p.min_required}" style="display:none; max-width:80px;"></td>
+            <td><span class="view-mode-${p.id}">${p.suggested_qty || 5}</span><input type="number" class="edit-mode-${p.id}" value="${p.suggested_qty || 5}" style="display:none; max-width:80px;"></td>
+            <td><span class="view-mode-${p.id}">${p.supplier}</span><input type="text" class="edit-mode-${p.id}" value="${p.supplier}" style="display:none; max-width:120px;"></td>
+            <td>${isLow ? '<span class="alert-badge">Χαμηλό</span>' : '<span class="ok-badge">OK</span>'}</td>
+            <td><button class="btn-sm btn-edit view-mode-${p.id}" onclick="enableEdit(${p.id})">✏️</button><button class="btn-sm btn-save edit-mode-${p.id}" onclick="saveEdit(${p.id})" style="display:none;">💾</button><button class="btn-sm view-mode-${p.id}" style="background-color:#e53e3e; color:white;" onclick="deleteProduct(${p.id}, '${p.name}')">🗑️</button></td>
+        </tr>`; 
+    }); 
+        }
         async function changeQuickStock(id, change, reason) { try { const res = await fetch(`${API_BASE}/products/${id}/quick-stock`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ change, reason }) }); if (res.ok) { const updatedProduct = await res.json(); document.getElementById(`stock-val-${id}`).innerText = updatedProduct.stock; loadInventory(); } } catch (err) { console.error(err); } }
         function enableEdit(id) { document.querySelectorAll('.view-mode-' + id).forEach(el => el.style.display = 'none'); document.querySelectorAll('.edit-mode-' + id).forEach(el => el.style.display = 'inline-block'); }
         async function saveEdit(id) { const inputs = document.querySelectorAll('.edit-mode-' + id); const updatedData = { name: inputs[0].value, min_required: parseInt(inputs[1].value) || 0, suggested_qty: parseInt(inputs[2].value) || 5, supplier: inputs[3].value }; try { const res = await fetch(API_BASE + '/products/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedData) }); if (res.ok) { await loadInventory(); if(document.getElementById('tab-suppliers').classList.contains('active')) loadSuppliersPage(); } } catch (err) { console.error(err); } }
