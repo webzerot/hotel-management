@@ -49,17 +49,18 @@ app.post('/api/products', async (req, res) => {
 
 app.put('/api/products/:id', async (req, res) => {
   const { id } = req.params;
-  let { name, min_required, supplier, suggested_qty } = req.body;
+  let { name, stock, min_required, supplier, suggested_qty } = req.body;
   if (!supplier || supplier.trim() === '') supplier = 'Άγνωστος';
   const sugQty = suggested_qty ? parseInt(suggested_qty) : 5;
   try {
     const result = await pool.query(
-      'UPDATE products SET name = $1, min_required = $2, supplier = $3, suggested_qty = $4 WHERE id = $5 RETURNING *',
-      [name, min_required, supplier, sugQty, id]
+      'UPDATE products SET name = $1, stock = $2, min_required = $3, supplier = $4, suggested_qty = $5 WHERE id = $6 RETURNING *',
+      [name, stock, min_required, supplier, sugQty, id]
     );
     res.json(result.rows[0]);
   } catch (err) { res.status(500).json({ error: 'Database error' }); }
 });
+
 
 // ΝΕΟ ROUTE: ΓΡΗΓΟΡΗ ΑΥΞΟΜΕΙΩΣΗ ΑΠΟΘΕΜΑΤΟΣ (+ / -) ΜΕ ΕΝΑ ΚΛΙΚ
 app.post('/api/products/:id/quick-stock', async (req, res) => {
